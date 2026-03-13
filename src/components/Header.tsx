@@ -1,0 +1,332 @@
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Search,
+  Menu,
+  X,
+  Moon,
+  Sun,
+  Globe,
+  ChevronDown,
+  User,
+  LogOut,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useTheme } from '@/components/theme-provider';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase, Category } from '@/lib/supabase';
+
+export default function Header() {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { theme, setTheme } = useTheme();
+  const { user, isAdmin, signOut } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [breakingNews, setBreakingNews] = useState<string | null>(null);
+
+  const currentLang = i18n.language;
+  const isRTL = currentLang === 'ar';
+
+  useEffect(() => {
+    document.dir = isRTL ? 'rtl' : 'ltr';
+    document.documentElement.lang = currentLang;
+  }, [currentLang, isRTL]);
+
+  useEffect(() => {
+    fetchCategories();
+    fetchBreakingNews();
+
+    const interval = setInterval(fetchBreakingNews, 120000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchCategories = async () => {
+    const { data } = await supabase
+      .from('categories')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (data) setCategories(data);
+  };
+
+  const fetchBreakingNews = async () => {
+    const { data } = await supabase
+      .from('posts')
+      .select(`title_${currentLang}`)
+      .eq('status', 'published')
+      .eq('is_breaking', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (data) {
+      setBreakingNews(data[`title_${currentLang}` as keyof typeof data] as string);
+    }
+  };
+
+  const changeLanguage = (lang: string) => {
+    const currentPath = location.pathname;
+    const pathWithoutLang = currentPath.replace(/^\/(ar|fr)/, '');
+    i18n.changeLanguage(lang);
+    navigate(`/${lang}${pathWithoutLang || ''}`);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/${currentLang}/search?q=${encodeURIComponent(searchQuery)}`);
+      setSearchOpen(false);
+      setSearchQuery('');
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate(`/${currentLang}`);
+  };
+
+  return (
+    <>
+      {breakingNews && (
+        <motion.div
+          initial={{ y: -50 }}
+          animate={{ y: 0 }}
+          className="bg-destructive text-destructive-foreground py-2 px-4"
+        >
+          <div className="container mx-auto flex items-center gap-3">
+            <span className="font-bold text-sm uppercase">{t('breaking_news')}</span>
+            <span className="text-sm flex-1 truncate">{breakingNews}</span>
+          </div>
+        </motion.div>
+      )}
+
+      <header className="sticky top-0 z-50 bg-primary text-primary-foreground shadow-md">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            <Link to={`/${currentLang}`} className="flex items-center gap-3">
+              <img
+                src="https://i.postimg.cc/JzzwfmdL/LOGO-TEMDHRA.png"
+                alt={t('site_name')}
+                className="h-10 w-auto"
+              />
+            </Link>
+
+            <nav className="hidden md:flex items-center gap-6">
+              <Link
+                to={`/${currentLang}`}
+                className="hover:text-primary-foreground/80 transition-colors font-medium"
+              >
+                {t('home')}
+              </Link>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-1 hover:text-primary-foreground/80 transition-colors font-medium">
+                  {t('categories')}
+                  <ChevronDown className="w-4 h-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={isRTL ? 'end' : 'start'}>
+                  {categories.map((category) => (
+                    <DropdownMenuItem key={category.id} asChild>
+                      <Link to={`/${currentLang}/category/${category.slug}`}>
+                        {category[`name_${currentLang}` as keyof Category] as string}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Link
+                to={`/${currentLang}/videos`}
+                className="hover:text-primary-foreground/80 transition-colors font-medium"
+              >
+                {t('videos')}
+              </Link>
+
+              <Link
+                to={`/${currentLang}/contact`}
+                className="hover:text-primary-foreground/80 transition-colors font-medium"
+              >
+                {t('contact')}
+              </Link>
+            </nav>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSearchOpen(!searchOpen)}
+                className="text-primary-foreground hover:bg-primary-foreground/10"
+              >
+                <Search className="w-5 h-5" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="text-primary-foreground hover:bg-primary-foreground/10"
+              >
+                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-primary-foreground hover:bg-primary-foreground/10"
+                  >
+                    <Globe className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={isRTL ? 'end' : 'start'}>
+                  <DropdownMenuItem onClick={() => changeLanguage('ar')}>
+                    {t('arabic')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => changeLanguage('fr')}>
+                    {t('french')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-primary-foreground hover:bg-primary-foreground/10"
+                    >
+                      <User className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={isRTL ? 'end' : 'start'}>
+                    {isAdmin && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin">{t('admin_dashboard')}</Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      {t('logout')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate(`/${currentLang}/login`)}
+                  className="text-primary-foreground hover:bg-primary-foreground/10 hidden md:inline-flex"
+                >
+                  {t('login')}
+                </Button>
+              )}
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden text-primary-foreground hover:bg-primary-foreground/10"
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {searchOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="border-t border-primary-foreground/20 overflow-hidden"
+            >
+              <div className="container mx-auto px-4 py-4">
+                <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
+                  <Input
+                    type="search"
+                    placeholder={t('search')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-primary-foreground/10 text-primary-foreground placeholder:text-primary-foreground/60 border-primary-foreground/20"
+                  />
+                </form>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="md:hidden border-t border-primary-foreground/20 overflow-hidden"
+            >
+              <nav className="container mx-auto px-4 py-4 flex flex-col gap-3">
+                <Link
+                  to={`/${currentLang}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 hover:text-primary-foreground/80 transition-colors font-medium"
+                >
+                  {t('home')}
+                </Link>
+                {categories.map((category) => (
+                  <Link
+                    key={category.id}
+                    to={`/${currentLang}/category/${category.slug}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2 hover:text-primary-foreground/80 transition-colors"
+                  >
+                    {category[`name_${currentLang}` as keyof Category] as string}
+                  </Link>
+                ))}
+                <Link
+                  to={`/${currentLang}/videos`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 hover:text-primary-foreground/80 transition-colors font-medium"
+                >
+                  {t('videos')}
+                </Link>
+                <Link
+                  to={`/${currentLang}/contact`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 hover:text-primary-foreground/80 transition-colors font-medium"
+                >
+                  {t('contact')}
+                </Link>
+                {!user && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      navigate(`/${currentLang}/login`);
+                    }}
+                    className="mt-2"
+                  >
+                    {t('login')}
+                  </Button>
+                )}
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+    </>
+  );
+}
