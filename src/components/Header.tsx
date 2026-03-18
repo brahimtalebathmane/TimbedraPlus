@@ -35,7 +35,6 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
-  const [breakingNews, setBreakingNews] = useState<string | null>(null);
 
   const currentLang = i18n.language;
   const isRTL = currentLang === 'ar';
@@ -47,10 +46,6 @@ export default function Header() {
 
   useEffect(() => {
     fetchCategories();
-    fetchBreakingNews();
-
-    const interval = setInterval(fetchBreakingNews, 120000);
-    return () => clearInterval(interval);
   }, []);
 
   const fetchCategories = async () => {
@@ -59,21 +54,6 @@ export default function Header() {
       .select('*')
       .order('created_at', { ascending: true });
     if (data) setCategories(data);
-  };
-
-  const fetchBreakingNews = async () => {
-    const { data } = await supabase
-      .from('posts')
-      .select(`title_${currentLang}`)
-      .eq('status', 'published')
-      .eq('is_breaking', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (data) {
-      setBreakingNews(data[`title_${currentLang}` as keyof typeof data] as string);
-    }
   };
 
   const changeLanguage = (lang: string) => {
@@ -99,19 +79,6 @@ export default function Header() {
 
   return (
     <>
-      {breakingNews && (
-        <motion.div
-          initial={{ y: -50 }}
-          animate={{ y: 0 }}
-          className="bg-destructive text-destructive-foreground py-2 px-4"
-        >
-          <div className="container mx-auto flex items-center gap-3">
-            <span className="font-bold text-sm uppercase">{t('breaking_news')}</span>
-            <span className="text-sm flex-1 truncate">{breakingNews}</span>
-          </div>
-        </motion.div>
-      )}
-
       <header className="sticky top-0 z-50 bg-primary text-primary-foreground shadow-md">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">

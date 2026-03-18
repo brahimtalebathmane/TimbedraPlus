@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
+import { useTranslation } from 'react-i18next';
 import Header from './components/Header';
 import ProtectedRoute from './components/ProtectedRoute';
+import Footer from './components/Footer';
 
 const Home = lazy(() => import('./pages/Home'));
 const Article = lazy(() => import('./pages/Article'));
@@ -32,11 +34,17 @@ function LoadingFallback() {
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       <Header />
-      {children}
-    </>
+      <main className="flex-1">{children}</main>
+      <Footer />
+    </div>
   );
+}
+
+function NotFound() {
+  const { i18n } = useTranslation();
+  return <Navigate to={`/${i18n.language}`} replace />;
 }
 
 function App() {
@@ -118,6 +126,9 @@ function App() {
             }
           />
 
+          <Route path="/:lang/admin" element={<Navigate to="/admin" replace />} />
+          <Route path="/:lang/admin/*" element={<Navigate to="/admin" replace />} />
+
           <Route
             path="/:lang/:slug"
             element={
@@ -126,6 +137,8 @@ function App() {
               </PublicLayout>
             }
           />
+
+          <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
 
           <Route
             path="/admin"

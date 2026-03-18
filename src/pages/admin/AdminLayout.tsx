@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FileText, FolderOpen, Video, LayoutDashboard, Phone, Tv } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Footer from '@/components/Footer';
 
 export default function AdminLayout() {
   const { t } = useTranslation();
@@ -17,8 +18,8 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="min-h-screen bg-muted/10">
-      <div className="flex">
+    <div className="min-h-screen bg-muted/10 flex flex-col">
+      <div className="flex flex-1">
         <aside className="w-64 min-h-screen bg-card border-r">
           <div className="p-6">
             <h1 className="text-2xl font-bold text-primary">{t('admin_dashboard')}</h1>
@@ -46,6 +47,7 @@ export default function AdminLayout() {
           <Outlet />
         </main>
       </div>
+      <Footer />
     </div>
   );
 }
