@@ -68,6 +68,32 @@ export async function uploadImage(file: File, bucket: string = 'news-images'): P
   return data.publicUrl;
 }
 
+export async function uploadVideo(file: File, bucket: string = 'news-videos'): Promise<string> {
+  const { supabase } = await import('./supabase');
+
+  // Note: we intentionally do not compress videos in-browser (too slow / heavy).
+  // Storage policies + bucket limits protect the system.
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const uuid = crypto.randomUUID();
+  const fileExt = file.name.split('.').pop() || 'mp4';
+  const fileName = `${uuid}.${fileExt}`;
+  const filePath = `videos/${year}/${month}/${fileName}`;
+
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(filePath, file, {
+      // Helps prevent content sniffing issues in some browsers.
+      contentType: file.type || 'video/mp4',
+    });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+  return data.publicUrl;
+}
+
 export function formatDate(
   date: string,
   locale: string = 'ar',
@@ -95,7 +121,13 @@ export function validateTipTapContent(content: string): boolean {
 
 export function getImagePath(url: string | null): string {
   if (!url) return 'https://images.pexels.com/photos/3944454/pexels-photo-3944454.jpeg';
-  return url;
+  // Prefer stored public URLs, but also support older records that might store paths.
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  if (!supabaseUrl) return url;
+
+  return `${supabaseUrl}/storage/v1/object/public/news-images/${url}`;
 }
 
 export function extractVideoId(url: string): string | null {

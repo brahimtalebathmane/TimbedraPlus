@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase, Post } from '@/lib/supabase';
-import { formatDate, formatRelativeTime, getImagePath, truncateText } from '@/lib/helpers';
+import { formatDate, formatRelativeTime, getImagePath, getVideoEmbedUrl, truncateText } from '@/lib/helpers';
 
 export default function Article() {
   const { slug } = useParams<{ slug: string }>();
@@ -83,6 +83,10 @@ export default function Article() {
 
   const title = post[`title_${currentLang}` as keyof Post] as string;
   const content = post[`content_${currentLang}` as keyof Post] as string;
+  const isVideoPost = post.content_type === 'video';
+  const videoUrl = (post as any).video_url as string | null | undefined;
+  const videoThumbnail = (post as any).video_thumbnail as string | null | undefined;
+  const videoEmbedUrl = videoUrl ? getVideoEmbedUrl(videoUrl) : null;
 
   return (
     <>
@@ -91,7 +95,10 @@ export default function Article() {
         <meta name="description" content={truncateText(content, 160)} />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={truncateText(content, 160)} />
-        <meta property="og:image" content={getImagePath(post.image_url)} />
+        <meta
+          property="og:image"
+          content={isVideoPost ? (videoThumbnail ? getImagePath(videoThumbnail) : getImagePath(post.image_url)) : getImagePath(post.image_url)}
+        />
         <meta property="og:url" content={shareUrl} />
         <meta property="og:type" content="article" />
         <meta name="twitter:card" content="summary_large_image" />
@@ -128,11 +135,30 @@ export default function Article() {
           </div>
 
           <div className="relative aspect-video mb-8 rounded-lg overflow-hidden">
-            <img
-              src={getImagePath(post.image_url)}
-              alt={title}
-              className="w-full h-full object-cover"
-            />
+            {isVideoPost && videoUrl ? (
+              videoEmbedUrl ? (
+                <iframe
+                  title={title}
+                  src={videoEmbedUrl}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <video
+                  src={videoUrl}
+                  controls
+                  poster={videoThumbnail ? getImagePath(videoThumbnail) : undefined}
+                  className="w-full h-full object-cover bg-black"
+                />
+              )
+            ) : (
+              <img
+                src={getImagePath(post.image_url)}
+                alt={title}
+                className="w-full h-full object-cover"
+              />
+            )}
           </div>
 
           <div

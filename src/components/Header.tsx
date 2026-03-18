@@ -160,6 +160,13 @@ export default function Header() {
               >
                 {t('contact')}
               </Link>
+
+              <Link
+                to={`/${currentLang}/streams`}
+                className="hover:text-primary-foreground/80 transition-colors font-medium"
+              >
+                {t('streams')}
+              </Link>
             </nav>
 
             <div className="flex items-center gap-2">
@@ -309,6 +316,13 @@ export default function Header() {
                   className="py-2 hover:text-primary-foreground/80 transition-colors font-medium"
                 >
                   {t('contact')}
+                </Link>
+                <Link
+                  to={`/${currentLang}/streams`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 hover:text-primary-foreground/80 transition-colors font-medium"
+                >
+                  {t('streams')}
                 </Link>
                 {!user && (
                   <Button

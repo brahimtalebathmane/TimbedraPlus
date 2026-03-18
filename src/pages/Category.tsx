@@ -1,0 +1,110 @@
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Helmet } from 'react-helmet-async';
+import { Card, CardContent } from '@/components/ui/card';
+import { Clock } from 'lucide-react';
+import { supabase, Category as CategoryType, Post } from '@/lib/supabase';
+import { getImagePath, formatRelativeTime, truncateText } from '@/lib/helpers';
+
+export default function Category() {
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language;
+  const { slug } = useParams<{ slug: string }>();
+
+  const [category, setCategory] = useState<CategoryType | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCategory = async () => {
+      if (!slug) return;
+      setLoading(true);
+
+      try {
+        const { data: cat } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('slug', slug)
+          .maybeSingle();
+
+        if (cat) setCategory(cat);
+
+        const { data } = await supabase
+          .from('posts')
+          .select('*, category:categories(*), author:profiles(*)')
+          .eq('status', 'published')
+          .eq('category_id', cat?.id || '')
+          .in('content_type', ['news', 'portrait', 'tourism'])
+          .order('created_at', { ascending: false })
+          .limit(24);
+
+        if (data) setPosts(data);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategory();
+  }, [slug, currentLang]);
+
+  const categoryTitle = category ? (category[`name_${currentLang}` as keyof CategoryType] as string) : null;
+
+  return (
+    <>
+      <Helmet>
+        <title>{categoryTitle ? `${categoryTitle} - ${t('site_name')}` : t('categories')}</title>
+        <meta name="description" content={categoryTitle || t('categories')} />
+      </Helmet>
+
+      <div className="container mx-auto px-4 py-12">
+        <h1 className="text-3xl font-bold mb-8">{categoryTitle || t('categories')}</h1>
+
+        {loading ? (
+          <div className="grid md:grid-cols-2 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="h-48 bg-muted rounded-lg mb-3" />
+                <div className="h-5 bg-muted rounded w-10/12" />
+              </div>
+            ))}
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="text-center text-muted-foreground py-12">
+            {t('no_results')}
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-6">
+            {posts.map((post) => (
+              <Link key={post.id} to={`/${currentLang}/${post.slug}`}>
+                <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="relative aspect-video">
+                    <img
+                      src={getImagePath(post.image_url)}
+                      alt={post[`title_${currentLang}` as keyof Post] as string}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                  <CardContent className="p-4">
+                    <h3 className="text-xl font-bold mb-2 line-clamp-2">
+                      {post[`title_${currentLang}` as keyof Post] as string}
+                    </h3>
+                    <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                      {truncateText(post[`content_${currentLang}` as keyof Post] as string, 110)}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      {formatRelativeTime(post.created_at, currentLang)}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+

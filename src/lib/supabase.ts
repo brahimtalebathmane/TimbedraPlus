@@ -34,6 +34,8 @@ export type Post = {
   content_fr: string;
   slug: string;
   image_url: string | null;
+  video_url?: string | null;
+  video_thumbnail?: string | null;
   category_id: string | null;
   author_id: string | null;
   status: 'draft' | 'published' | 'archived';
@@ -61,4 +63,27 @@ export type Message = {
   email: string;
   message: string;
   created_at: string;
+};
+
+export type ContactInfo = {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  facebook: string | null;
+  twitter: string | null;
+  instagram: string | null;
+  youtube: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LiveStream = {
+  id: string;
+  title: string;
+  video_url: string;
+  started_at: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 };

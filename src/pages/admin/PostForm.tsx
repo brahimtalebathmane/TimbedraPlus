@@ -27,7 +27,15 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import TipTapEditor from '@/components/TipTapEditor';
 import { supabase, Category } from '@/lib/supabase';
-import { generateSlug, createSearchVector, uploadImage, validateTipTapContent } from '@/lib/helpers';
+import {
+  generateSlug,
+  createSearchVector,
+  uploadImage,
+  uploadVideo,
+  validateTipTapContent,
+  extractVideoId,
+  getVideoEmbedUrl,
+} from '@/lib/helpers';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -42,6 +50,8 @@ const postSchema = z.object({
   }),
   slug: z.string().min(2),
   image_url: z.string().optional().nullable(),
+  video_url: z.string().optional().nullable(),
+  video_thumbnail: z.string().optional().nullable(),
   category_id: z.string().uuid(),
   status: z.enum(['draft', 'published', 'archived']),
   content_type: z.enum(['news', 'portrait', 'tourism', 'video']),
@@ -69,12 +79,16 @@ export default function PostForm() {
       content_fr: '',
       slug: '',
       image_url: null,
+      video_url: null,
+      video_thumbnail: null,
       category_id: '',
       status: 'draft',
       content_type: 'news',
       is_breaking: false,
     },
   });
+
+  const contentType = form.watch('content_type');
 
   useEffect(() => {
     fetchCategories();
@@ -109,6 +123,8 @@ export default function PostForm() {
           content_fr: data.content_fr,
           slug: data.slug,
           image_url: data.image_url,
+          video_url: (data as any).video_url ?? null,
+          video_thumbnail: (data as any).video_thumbnail ?? null,
           category_id: data.category_id || '',
           status: data.status as any,
           content_type: data.content_type as any,
@@ -134,6 +150,38 @@ export default function PostForm() {
       const url = await uploadImage(file);
       form.setValue('image_url', url);
       setImagePreview(url);
+      toast.success(t('success'));
+    } catch (error: any) {
+      toast.error(error.message || t('error'));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadVideo(file);
+      form.setValue('video_url', url);
+      toast.success(t('success'));
+    } catch (error: any) {
+      toast.error(error.message || t('error'));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleVideoThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      form.setValue('video_thumbnail', url);
       toast.success(t('success'));
     } catch (error: any) {
       toast.error(error.message || t('error'));
@@ -387,37 +435,162 @@ export default function PostForm() {
                 )}
               />
 
-              <div>
-                <FormLabel>{t('image')}</FormLabel>
-                <div className="mt-2 space-y-4">
-                  {imagePreview && (
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full max-w-md h-48 object-cover rounded-lg"
-                    />
-                  )}
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="image-upload"
-                      disabled={uploading}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => document.getElementById('image-upload')?.click()}
-                      disabled={uploading}
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      {uploading ? t('loading') : t('image')}
-                    </Button>
+              {contentType !== 'video' && (
+                <div>
+                  <FormLabel>{t('image')}</FormLabel>
+                  <div className="mt-2 space-y-4">
+                    {imagePreview && (
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full max-w-md h-48 object-cover rounded-lg"
+                      />
+                    )}
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        id="image-upload"
+                        disabled={uploading}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById('image-upload')?.click()}
+                        disabled={uploading}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {uploading ? t('loading') : t('image')}
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {contentType === 'video' && (
+                <div className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="video_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Video URL</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ''}
+                            placeholder="https://youtube.com/... or https://vimeo.com/... or uploaded mp4 URL"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div>
+                    <FormLabel>Upload MP4</FormLabel>
+                    <div className="mt-2 space-y-4">
+                      <input
+                        type="file"
+                        accept="video/mp4"
+                        onChange={handleVideoUpload}
+                        className="hidden"
+                        id="video-upload"
+                        disabled={uploading}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById('video-upload')?.click()}
+                        disabled={uploading}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {uploading ? t('loading') : 'Upload video'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <FormLabel>Video Thumbnail</FormLabel>
+                    <div className="mt-2 space-y-4">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleVideoThumbnailUpload}
+                        className="hidden"
+                        id="video-thumbnail-upload"
+                        disabled={uploading}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          document.getElementById('video-thumbnail-upload')?.click()
+                        }
+                        disabled={uploading}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {uploading ? t('loading') : 'Upload thumbnail'}
+                      </Button>
+
+                      {form.getValues('video_thumbnail') && (
+                        <img
+                          src={form.getValues('video_thumbnail') as string}
+                          alt="Video thumbnail preview"
+                          className="w-full max-w-md h-48 object-cover rounded-lg"
+                          loading="lazy"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <FormLabel>Preview</FormLabel>
+                    <div className="mt-2">
+                      {form.getValues('video_url') ? (
+                        (() => {
+                          const url = form.getValues('video_url') as string;
+                          const embedUrl = getVideoEmbedUrl(url);
+                          const thumb = form.getValues('video_thumbnail') as string | null;
+
+                          if (embedUrl) {
+                            return (
+                              <iframe
+                                title="Video preview"
+                                src={embedUrl}
+                                className="w-full aspect-video rounded-lg"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              />
+                            );
+                          }
+
+                          return (
+                            <video
+                              src={url}
+                              controls
+                              poster={thumb || undefined}
+                              className="w-full aspect-video rounded-lg bg-black"
+                            />
+                          );
+                        })()
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          Set a video URL or upload an MP4.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {form.getValues('video_url') && (
+                    <div className="text-sm text-muted-foreground">
+                      Detected: {extractVideoId(form.getValues('video_url') as string) ? 'YouTube/Vimeo' : 'MP4 / URL'}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

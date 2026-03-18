@@ -10,18 +10,33 @@ import { Badge } from '@/components/ui/badge';
 import { supabase, Post, Video } from '@/lib/supabase';
 import { formatRelativeTime, truncateText, getImagePath } from '@/lib/helpers';
 
+type TopNewsPost = Pick<
+  Post,
+  | 'id'
+  | 'title_ar'
+  | 'title_fr'
+  | 'content_ar'
+  | 'content_fr'
+  | 'slug'
+  | 'image_url'
+  | 'content_type'
+  | 'is_breaking'
+  | 'created_at'
+>;
+
 export default function Home() {
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language;
-  const [hero, setHero] = useState<Post | null>(null);
+  const [topNews, setTopNews] = useState<TopNewsPost[]>([]);
   const [latest, setLatest] = useState<Post[]>([]);
   const [trending, setTrending] = useState<Post[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [slideIndex, setSlideIndex] = useState(0);
 
   useEffect(() => {
-    fetchHero();
+    fetchTopNews();
     fetchTrending();
     fetchVideos();
   }, [currentLang]);
@@ -30,16 +45,53 @@ export default function Home() {
     fetchLatest();
   }, [page, currentLang]);
 
-  const fetchHero = async () => {
-    const { data } = await supabase
+  useEffect(() => {
+    if (topNews.length > 0) setSlideIndex(0);
+  }, [topNews.length, currentLang]);
+
+  useEffect(() => {
+    if (topNews.length <= 1) return;
+    const interval = window.setInterval(() => {
+      setSlideIndex((prev) => (prev + 1) % topNews.length);
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [topNews.length]);
+
+  const fetchTopNews = async () => {
+    const featuredRes = await supabase
       .from('posts')
-      .select('*, category:categories(*), author:profiles(*)')
+      .select('id, title_ar, title_fr, slug, image_url, content_type, is_breaking, created_at, content_ar, content_fr')
+      .eq('status', 'published')
+      .eq('is_breaking', true)
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    const latestRes = await supabase
+      .from('posts')
+      .select('id, title_ar, title_fr, slug, image_url, content_type, is_breaking, created_at, content_ar, content_fr')
       .eq('status', 'published')
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(7);
 
-    if (data) setHero(data);
+    const featured = featuredRes.data ?? [];
+    const latestPosts = latestRes.data ?? [];
+
+    const merged: TopNewsPost[] = [];
+    const seen = new Set<string>();
+
+    const pushUnique = (arr: TopNewsPost[]) => {
+      for (const p of arr) {
+        if (p.content_type === 'video') continue; // slider expects images
+        if (seen.has(p.id)) continue;
+        seen.add(p.id);
+        merged.push(p);
+      }
+    };
+
+    pushUnique(featured as TopNewsPost[]);
+    pushUnique(latestPosts as TopNewsPost[]);
+
+    setTopNews(merged.slice(0, 5));
   };
 
   const fetchLatest = async () => {
@@ -50,16 +102,18 @@ export default function Home() {
       .from('posts')
       .select('*, category:categories(*), author:profiles(*)')
       .eq('status', 'published')
+      .in('content_type', ['news', 'portrait', 'tourism'])
       .order('created_at', { ascending: false })
       .range(from, to);
 
     if (data) {
+      const visible = data.slice(0, 6);
       if (page === 1) {
-        setLatest(data.slice(1));
+        setLatest(visible);
       } else {
-        setLatest((prev) => [...prev, ...data]);
+        setLatest((prev) => [...prev, ...visible]);
       }
-      setHasMore(data.length === 7);
+      setHasMore(data.length > 6);
     }
   };
 
@@ -68,6 +122,7 @@ export default function Home() {
       .from('posts')
       .select('*, category:categories(*)')
       .eq('status', 'published')
+      .in('content_type', ['news', 'portrait', 'tourism'])
       .order('created_at', { ascending: false })
       .limit(5);
 
@@ -95,50 +150,93 @@ export default function Home() {
         <meta name="description" content={t('site_name')} />
       </Helmet>
 
-      <div className="container mx-auto px-4 py-12">
-        {hero && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-12"
-          >
-            <Link to={`/${currentLang}/${hero.slug}`}>
-              <Card className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                <div className="grid md:grid-cols-2 gap-0">
-                  <div className="relative aspect-video md:aspect-auto">
+      <div className="container mx-auto px-4 py-8">
+        {topNews.length > 0 && (
+          <div className="relative mb-10">
+            <div className="relative overflow-hidden rounded-xl">
+              <Link to={`/${currentLang}/${topNews[slideIndex].slug}`}>
+                <motion.div
+                  key={topNews[slideIndex].id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                  className="grid md:grid-cols-2 gap-0 bg-card"
+                >
+                  <div className="relative aspect-[16/9] md:aspect-auto">
                     <img
-                      src={getImagePath(hero.image_url)}
-                      alt={hero[`title_${currentLang}` as keyof Post] as string}
+                      src={getImagePath(topNews[slideIndex].image_url)}
+                      alt={topNews[slideIndex][`title_${currentLang}` as keyof TopNewsPost] as string}
                       className="w-full h-full object-cover"
                       loading="lazy"
                     />
                   </div>
+
                   <CardContent className="p-8 flex flex-col justify-center">
-                    {hero.category && (
-                      <Badge className="w-fit mb-4">
-                        {hero.category[`name_${currentLang}` as keyof typeof hero.category] as string}
-                      </Badge>
-                    )}
-                    <h1 className="text-4xl font-bold mb-4 leading-tight">
-                      {hero[`title_${currentLang}` as keyof Post] as string}
-                    </h1>
-                    <p className="text-muted-foreground text-lg mb-4">
-                      {truncateText(hero[`content_${currentLang}` as keyof Post] as string, 200)}
+                    <Badge className="w-fit mb-4">
+                      {topNews[slideIndex][`title_${currentLang}` as keyof TopNewsPost] as string}
+                    </Badge>
+                    <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
+                      {topNews[slideIndex][`title_${currentLang}` as keyof TopNewsPost] as string}
+                    </h2>
+                    <p className="text-muted-foreground text-lg mb-4 line-clamp-2">
+                      {truncateText(
+                        topNews[slideIndex][`content_${currentLang}` as keyof TopNewsPost] as string,
+                        180
+                      )}
                     </p>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        {formatRelativeTime(hero.created_at, currentLang)}
+                        {formatRelativeTime(topNews[slideIndex].created_at, currentLang)}
                       </div>
-                      {hero.author && (
-                        <span>{hero.author.name}</span>
-                      )}
                     </div>
                   </CardContent>
+                </motion.div>
+              </Link>
+            </div>
+
+            {topNews.length > 1 && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="absolute top-1/2 -translate-y-1/2 left-3 bg-background/90"
+                  onClick={() =>
+                    setSlideIndex((prev) => (prev - 1 + topNews.length) % topNews.length)
+                  }
+                  aria-label="Previous slide"
+                >
+                  {currentLang === 'ar' ? '→' : '←'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="absolute top-1/2 -translate-y-1/2 right-3 bg-background/90"
+                  onClick={() => setSlideIndex((prev) => (prev + 1) % topNews.length)}
+                  aria-label="Next slide"
+                >
+                  {currentLang === 'ar' ? '←' : '→'}
+                </Button>
+
+                <div className="flex justify-center gap-2 mt-4">
+                  {topNews.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setSlideIndex(i)}
+                      className={`h-2 w-2 rounded-full transition-colors ${
+                        i === slideIndex ? 'bg-primary' : 'bg-muted-foreground/30'
+                      }`}
+                      aria-label={`Go to slide ${i + 1}`}
+                    />
+                  ))}
                 </div>
-              </Card>
-            </Link>
-          </motion.div>
+              </>
+            )}
+          </div>
         )}
 
         <div className="grid lg:grid-cols-3 gap-8">
