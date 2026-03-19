@@ -200,18 +200,35 @@ export default function PostForm() {
         values.content_fr
       );
 
-      const postData = {
+      const postData: Record<string, unknown> = {
         ...values,
         search_vector: searchVector,
-        author_id: user?.id,
+        author_id: user?.id ?? null,
         updated_at: new Date().toISOString(),
       };
 
+      // Avoid referencing columns with the schema cache when they're not relevant.
+      // This prevents failures if the DB is temporarily behind migrations.
+      if (postData.content_type !== 'video') {
+        delete postData.video_url;
+        delete postData.video_thumbnail;
+      }
+
+      // If user didn't provide a thumbnail/video, omit it entirely.
+      // This also prevents overwriting existing values during edits.
+      if (postData.video_url == null) delete postData.video_url;
+      if (postData.video_thumbnail == null) delete postData.video_thumbnail;
+
       if (id && id !== 'new') {
-        const { error } = await supabase.from('posts').update(postData).eq('id', id);
+        const { error } = await supabase
+          .from('posts')
+          .update(postData as any)
+          .eq('id', id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('posts').insert([postData]);
+        const { error } = await supabase
+          .from('posts')
+          .insert(postData as any);
         if (error) throw error;
       }
 
