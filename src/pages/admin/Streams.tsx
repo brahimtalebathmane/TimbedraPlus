@@ -3,13 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { Trash2, Pencil, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, LiveStream } from '@/lib/supabase';
-import { uploadVideo } from '@/lib/helpers';
+import { uploadVideoWithProgress } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { getErrorMessage } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +44,7 @@ export default function StreamsAdmin() {
   const [videoUrl, setVideoUrl] = useState('');
   const [isActive, setIsActive] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const fetchStreams = async () => {
     const { data } = await supabase
@@ -76,12 +79,15 @@ export default function StreamsAdmin() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setUploadProgress(0);
     try {
-      const url = await uploadVideo(file);
+      const url = await uploadVideoWithProgress(file, {
+        onProgress: (p) => setUploadProgress(p.percent),
+      });
       setVideoUrl(url);
       toast.success(t('success'));
-    } catch (err: any) {
-      toast.error(err?.message || t('error'));
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || t('error'));
     } finally {
       setUploading(false);
     }
@@ -122,8 +128,8 @@ export default function StreamsAdmin() {
       toast.success(t('success'));
       resetForm();
       await fetchStreams();
-    } catch (err: any) {
-      toast.error(err?.message || t('error'));
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || t('error'));
     }
   };
 
@@ -141,8 +147,8 @@ export default function StreamsAdmin() {
       toast.success(t('success'));
       if (editingId === id) resetForm();
       await fetchStreams();
-    } catch (err: any) {
-      toast.error(err?.message || t('error'));
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || t('error'));
     }
   };
 
@@ -198,15 +204,26 @@ export default function StreamsAdmin() {
               id="stream-mp4-upload"
               disabled={uploading}
             />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => document.getElementById('stream-mp4-upload')?.click()}
-              disabled={uploading}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              {uploading ? t('loading') : 'Upload mp4'}
-            </Button>
+            <div className="space-y-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('stream-mp4-upload')?.click()}
+                disabled={uploading}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {uploading ? t('loading') : 'Upload mp4'}
+              </Button>
+
+              {uploading && (
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">
+                    Uploading… {Math.round(uploadProgress)}%
+                  </div>
+                  <Progress value={uploadProgress} />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex gap-4">

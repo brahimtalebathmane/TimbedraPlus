@@ -81,17 +81,106 @@ export async function uploadVideo(file: File, bucket: string = 'news-videos'): P
   const fileName = `${uuid}.${fileExt}`;
   const filePath = `videos/${year}/${month}/${fileName}`;
 
-  const { error } = await supabase.storage
-    .from(bucket)
-    .upload(filePath, file, {
-      // Helps prevent content sniffing issues in some browsers.
-      contentType: file.type || 'video/mp4',
-    });
-
+  // Fallback/no-progress upload.
+  const { error } = await supabase.storage.from(bucket).upload(filePath, file, {
+    // Helps prevent content sniffing issues in some browsers.
+    contentType: file.type || 'video/mp4',
+  });
   if (error) throw error;
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
   return data.publicUrl;
+}
+
+type UploadProgress = {
+  loaded: number;
+  total: number;
+  percent: number;
+};
+
+/**
+ * Uploads a video with real client-side progress.
+ * Uses a signed upload URL (when available) + XHR to report progress.
+ */
+export async function uploadVideoWithProgress(
+  file: File,
+  opts?: {
+    bucket?: string;
+    onProgress?: (progress: UploadProgress) => void;
+    timeoutMs?: number;
+  }
+): Promise<string> {
+  const { supabase } = await import('./supabase');
+
+  const bucket = opts?.bucket ?? 'news-videos';
+  const timeoutMs = opts?.timeoutMs ?? 5 * 60 * 1000; // 5 minutes
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const uuid = crypto.randomUUID();
+  const fileExt = file.name.split('.').pop() || 'mp4';
+  const fileName = `${uuid}.${fileExt}`;
+  const filePath = `videos/${year}/${month}/${fileName}`;
+
+  // Prefer signed upload URL so we can track upload progress.
+  // If the client version doesn't support it (or it fails), fall back to supabase-js upload.
+  try {
+    type SignedUploadData = { signedUrl: string; token: string; path: string } | null;
+    type SignedUploadResponse = { data: SignedUploadData; error: unknown | null };
+    type StorageBucket = ReturnType<typeof supabase.storage.from>;
+    type StorageWithSignedUpload = StorageBucket & {
+      createSignedUploadUrl?: (path: string) => Promise<SignedUploadResponse>;
+    };
+
+    const storage = supabase.storage.from(bucket) as unknown as StorageWithSignedUpload;
+    if (typeof storage.createSignedUploadUrl !== 'function') {
+      return await uploadVideo(file, bucket);
+    }
+
+    const { data, error } = await storage.createSignedUploadUrl(filePath);
+    if (error) throw error;
+
+    const signedUrl: string | undefined = data?.signedUrl;
+    if (!signedUrl) {
+      return await uploadVideo(file, bucket);
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', signedUrl, true);
+      xhr.timeout = timeoutMs;
+      xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+
+      xhr.upload.onprogress = (evt) => {
+        if (!evt.lengthComputable) return;
+        const percent = evt.total > 0 ? (evt.loaded / evt.total) * 100 : 0;
+        opts?.onProgress?.({
+          loaded: evt.loaded,
+          total: evt.total,
+          percent: Math.max(0, Math.min(100, percent)),
+        });
+      };
+
+      xhr.onerror = () => reject(new Error('Video upload failed (network error).'));
+      xhr.ontimeout = () => reject(new Error('Video upload timed out.'));
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) return resolve();
+        reject(new Error(`Video upload failed (${xhr.status}): ${xhr.responseText || xhr.statusText}`));
+      };
+
+      xhr.send(file);
+    });
+
+    // Ensure UI reaches 100%.
+    opts?.onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
+
+    const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    return publicData.publicUrl;
+  } catch {
+    // Fall back to the standard upload path (no progress).
+    return await uploadVideo(file, bucket);
+  }
 }
 
 export function formatDate(

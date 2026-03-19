@@ -74,6 +74,9 @@ export type ContactInfo = {
   twitter: string | null;
   instagram: string | null;
   youtube: string | null;
+  linkedin: string | null;
+  snapchat: string | null;
+  tiktok: string | null;
   created_at: string;
   updated_at: string;
 };

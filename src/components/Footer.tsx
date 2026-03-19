@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Mail, Phone, Facebook, Twitter, Instagram, Youtube, MessageCircle } from 'lucide-react';
+import {
+  Mail,
+  Phone,
+  Facebook,
+  Twitter,
+  Instagram,
+  Youtube,
+  MessageCircle,
+  Linkedin,
+  Ghost,
+  Music2,
+} from 'lucide-react';
 import { supabase, ContactInfo } from '@/lib/supabase';
 import { Link } from 'react-router-dom';
 
@@ -24,13 +35,16 @@ export default function Footer() {
   useEffect(() => {
     const fetchRow = async () => {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('contact_info')
           .select('*')
           .order('updated_at', { ascending: false })
           .limit(1);
+        if (error) throw error;
 
         if (data && data.length > 0) setRow(data[0] as ContactInfo);
+      } catch (err) {
+        console.error('Failed to load contact_info', err);
       } finally {
         setLoading(false);
       }
@@ -51,6 +65,9 @@ export default function Footer() {
     twitter: row?.twitter ?? '',
     instagram: row?.instagram ?? '',
     youtube: row?.youtube ?? '',
+    linkedin: row?.linkedin ?? '',
+    snapchat: row?.snapchat ?? '',
+    tiktok: row?.tiktok ?? '',
   };
 
   return (
@@ -152,6 +169,45 @@ export default function Footer() {
                 >
                   <Youtube className="w-4 h-4" />
                   <span className="text-sm">YouTube</span>
+                </a>
+              )}
+
+              {socials.linkedin && (
+                <a
+                  href={socials.linkedin}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="LinkedIn"
+                  className="inline-flex items-center gap-2 rounded-lg border bg-background/50 px-3 py-2 hover:bg-background transition-colors"
+                >
+                  <Linkedin className="w-4 h-4" />
+                  <span className="text-sm">LinkedIn</span>
+                </a>
+              )}
+
+              {socials.snapchat && (
+                <a
+                  href={socials.snapchat}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Snapchat"
+                  className="inline-flex items-center gap-2 rounded-lg border bg-background/50 px-3 py-2 hover:bg-background transition-colors"
+                >
+                  <Ghost className="w-4 h-4" />
+                  <span className="text-sm">Snapchat</span>
+                </a>
+              )}
+
+              {socials.tiktok && (
+                <a
+                  href={socials.tiktok}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="TikTok"
+                  className="inline-flex items-center gap-2 rounded-lg border bg-background/50 px-3 py-2 hover:bg-background transition-colors"
+                >
+                  <Music2 className="w-4 h-4" />
+                  <span className="text-sm">TikTok</span>
                 </a>
               )}
             </div>

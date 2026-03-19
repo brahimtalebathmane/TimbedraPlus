@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Trash2, Pencil, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, Video } from '@/lib/supabase';
+import { getErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -49,8 +50,8 @@ export default function VideosAdmin() {
       if (error) throw error;
       toast.success(t('success'));
       fetchVideos();
-    } catch (err: any) {
-      toast.error(err?.message || t('error'));
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || t('error'));
     }
   };
 

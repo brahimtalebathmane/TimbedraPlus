@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/utils';
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -48,8 +49,8 @@ export default function Register() {
       await signUp(values.email, values.password, values.name);
       toast.success(t('success'));
       navigate(`/${i18n.language}`);
-    } catch (error: any) {
-      toast.error(error.message || t('error'));
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('error'));
     } finally {
       setLoading(false);
     }

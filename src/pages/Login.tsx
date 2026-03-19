@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/utils';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -46,8 +47,8 @@ export default function Login() {
       await signIn(values.email, values.password);
       toast.success(t('success'));
       navigate(`/${i18n.language}`);
-    } catch (error: any) {
-      toast.error(error.message || t('error'));
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('error'));
     } finally {
       setLoading(false);
     }

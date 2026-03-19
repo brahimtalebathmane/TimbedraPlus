@@ -44,6 +44,7 @@ import {
 import { supabase, Category } from '@/lib/supabase';
 import { generateSlug } from '@/lib/helpers';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/utils';
 
 const categorySchema = z.object({
   name_ar: z.string().min(2),
@@ -109,8 +110,8 @@ export default function Categories() {
       setEditingCategory(null);
       form.reset();
       fetchCategories();
-    } catch (error: any) {
-      toast.error(error.message || t('error'));
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('error'));
     }
   };
 
@@ -120,8 +121,8 @@ export default function Categories() {
       if (error) throw error;
       toast.success(t('success'));
       fetchCategories();
-    } catch (error: any) {
-      toast.error(error.message || t('error'));
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('error'));
     }
   };
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { supabase, ContactInfo } from '@/lib/supabase';
+import { getErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,13 +26,17 @@ export default function ContactSettings() {
   const [twitter, setTwitter] = useState('');
   const [instagram, setInstagram] = useState('');
   const [youtube, setYoutube] = useState('');
+  const [linkedin, setLinkedin] = useState('');
+  const [snapchat, setSnapchat] = useState('');
+  const [tiktok, setTiktok] = useState('');
 
   const fetchRow = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('contact_info')
       .select('*')
       .order('updated_at', { ascending: false })
       .limit(1);
+    if (error) throw error;
     if (data && data.length > 0) setRow(data[0] as ContactInfo);
   };
 
@@ -40,6 +45,8 @@ export default function ContactSettings() {
       setLoading(true);
       try {
         await fetchRow();
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err) || t('error'));
       } finally {
         setLoading(false);
       }
@@ -56,6 +63,9 @@ export default function ContactSettings() {
     setTwitter(row.twitter ?? '');
     setInstagram(row.instagram ?? '');
     setYoutube(row.youtube ?? '');
+    setLinkedin(row.linkedin ?? '');
+    setSnapchat(row.snapchat ?? '');
+    setTiktok(row.tiktok ?? '');
   }, [row]);
 
   const handleSubmit = async () => {
@@ -68,6 +78,9 @@ export default function ContactSettings() {
         twitter: toNull(twitter),
         instagram: toNull(instagram),
         youtube: toNull(youtube),
+        linkedin: toNull(linkedin),
+        snapchat: toNull(snapchat),
+        tiktok: toNull(tiktok),
         updated_at: new Date().toISOString(),
       };
 
@@ -75,14 +88,16 @@ export default function ContactSettings() {
         const { error } = await supabase.from('contact_info').update(payload).eq('id', row.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('contact_info').insert(payload as any);
+        const { error } = await supabase
+          .from('contact_info')
+          .insert(payload as Record<string, unknown>);
         if (error) throw error;
       }
 
       toast.success(t('success'));
       await fetchRow();
-    } catch (err: any) {
-      toast.error(err?.message || t('error'));
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || t('error'));
     }
   };
 
@@ -126,6 +141,18 @@ export default function ContactSettings() {
                 <div className="text-sm text-muted-foreground mb-2">YouTube</div>
                 <Textarea value={youtube} onChange={(e) => setYoutube(e.target.value)} rows={2} placeholder="YouTube channel/video URL" />
               </div>
+              <div>
+                <div className="text-sm text-muted-foreground mb-2">LinkedIn</div>
+                <Input value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="LinkedIn URL" />
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground mb-2">Snapchat</div>
+                <Input value={snapchat} onChange={(e) => setSnapchat(e.target.value)} placeholder="Snapchat URL or username link" />
+              </div>
+              <div className="md:col-span-2">
+                <div className="text-sm text-muted-foreground mb-2">TikTok</div>
+                <Input value={tiktok} onChange={(e) => setTiktok(e.target.value)} placeholder="TikTok URL" />
+              </div>
 
               <div className="md:col-span-2 flex gap-4">
                 <Button type="button" onClick={handleSubmit}>
@@ -140,6 +167,9 @@ export default function ContactSettings() {
                   setTwitter(row.twitter ?? '');
                   setInstagram(row.instagram ?? '');
                   setYoutube(row.youtube ?? '');
+                  setLinkedin(row.linkedin ?? '');
+                  setSnapchat(row.snapchat ?? '');
+                  setTiktok(row.tiktok ?? '');
                 }}>
                   {t('cancel')}
                 </Button>

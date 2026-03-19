@@ -26,6 +26,7 @@ import {
 import { supabase, Post } from '@/lib/supabase';
 import { formatDate } from '@/lib/helpers';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/utils';
 
 export default function Posts() {
   const { t, i18n } = useTranslation();
@@ -49,8 +50,8 @@ export default function Posts() {
       if (error) throw error;
       toast.success(t('success'));
       fetchPosts();
-    } catch (error: any) {
-      toast.error(error.message || t('error'));
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('error'));
     }
   };
 

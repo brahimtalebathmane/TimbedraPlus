@@ -7,18 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { supabase } from '@/lib/supabase';
- 
-
-type ContactInfo = {
-  email?: string | null;
-  phone?: string | null;
-  whatsapp?: string | null;
-  facebook?: string | null;
-  twitter?: string | null;
-  instagram?: string | null;
-  youtube?: string | null;
-};
+import { supabase, ContactInfo } from '@/lib/supabase';
+import { getErrorMessage } from '@/lib/utils';
 
 function normalizeWhatsappLink(whatsapp: string) {
   const value = whatsapp.trim();
@@ -46,13 +36,16 @@ export default function Contact() {
     const fetchContact = async () => {
       setLoading(true);
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('contact_info')
           .select('*')
           .order('updated_at', { ascending: false })
           .limit(1);
+        if (error) throw error;
 
         if (data && data.length > 0) setContact(data[0] as ContactInfo);
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err) || t('error'));
       } finally {
         setLoading(false);
       }
@@ -81,8 +74,8 @@ export default function Contact() {
       setName('');
       setEmail('');
       setMessage('');
-    } catch (err: any) {
-      toast.error(err?.message || t('error'));
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || t('error'));
     } finally {
       setSending(false);
     }
@@ -179,6 +172,33 @@ export default function Contact() {
                       <div className="text-sm text-muted-foreground">YouTube</div>
                       <a className="text-primary hover:underline" href={contact.youtube} target="_blank" rel="noreferrer">
                         YouTube
+                      </a>
+                    </div>
+                  )}
+
+                  {contact?.linkedin && (
+                    <div>
+                      <div className="text-sm text-muted-foreground">LinkedIn</div>
+                      <a className="text-primary hover:underline" href={contact.linkedin} target="_blank" rel="noreferrer">
+                        LinkedIn
+                      </a>
+                    </div>
+                  )}
+
+                  {contact?.snapchat && (
+                    <div>
+                      <div className="text-sm text-muted-foreground">Snapchat</div>
+                      <a className="text-primary hover:underline" href={contact.snapchat} target="_blank" rel="noreferrer">
+                        Snapchat
+                      </a>
+                    </div>
+                  )}
+
+                  {contact?.tiktok && (
+                    <div>
+                      <div className="text-sm text-muted-foreground">TikTok</div>
+                      <a className="text-primary hover:underline" href={contact.tiktok} target="_blank" rel="noreferrer">
+                        TikTok
                       </a>
                     </div>
                   )}

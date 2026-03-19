@@ -31,13 +31,15 @@ import {
   generateSlug,
   createSearchVector,
   uploadImage,
-  uploadVideo,
+  uploadVideoWithProgress,
   validateTipTapContent,
   extractVideoId,
   getVideoEmbedUrl,
 } from '@/lib/helpers';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { Progress } from '@/components/ui/progress';
+import { getErrorMessage } from '@/lib/utils';
 
 const postSchema = z.object({
   title_ar: z.string().min(2),
@@ -67,6 +69,8 @@ export default function PostForm() {
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -116,6 +120,28 @@ export default function PostForm() {
 
       if (error) throw error;
       if (data) {
+        const row = data as unknown as Record<string, unknown>;
+        const videoUrl =
+          row.video_url == null || typeof row.video_url === 'string'
+            ? (row.video_url as string | null)
+            : null;
+        const videoThumbnail =
+          row.video_thumbnail == null || typeof row.video_thumbnail === 'string'
+            ? (row.video_thumbnail as string | null)
+            : null;
+
+        const status =
+          data.status === 'draft' || data.status === 'published' || data.status === 'archived'
+            ? data.status
+            : 'draft';
+        const contentType =
+          data.content_type === 'news' ||
+          data.content_type === 'portrait' ||
+          data.content_type === 'tourism' ||
+          data.content_type === 'video'
+            ? data.content_type
+            : 'news';
+
         form.reset({
           title_ar: data.title_ar,
           title_fr: data.title_fr,
@@ -123,19 +149,19 @@ export default function PostForm() {
           content_fr: data.content_fr,
           slug: data.slug,
           image_url: data.image_url,
-          video_url: (data as any).video_url ?? null,
-          video_thumbnail: (data as any).video_thumbnail ?? null,
+          video_url: videoUrl,
+          video_thumbnail: videoThumbnail,
           category_id: data.category_id || '',
-          status: data.status as any,
-          content_type: data.content_type as any,
+          status,
+          content_type: contentType,
           is_breaking: data.is_breaking,
         });
         if (data.image_url) {
           setImagePreview(data.image_url);
         }
       }
-    } catch (error: any) {
-      toast.error(error.message || t('error'));
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('error'));
     } finally {
       setLoading(false);
     }
@@ -151,8 +177,8 @@ export default function PostForm() {
       form.setValue('image_url', url);
       setImagePreview(url);
       toast.success(t('success'));
-    } catch (error: any) {
-      toast.error(error.message || t('error'));
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('error'));
     } finally {
       setUploading(false);
     }
@@ -163,14 +189,19 @@ export default function PostForm() {
     if (!file) return;
 
     setUploading(true);
+    setUploadingVideo(true);
+    setVideoUploadProgress(0);
     try {
-      const url = await uploadVideo(file);
+      const url = await uploadVideoWithProgress(file, {
+        onProgress: (p) => setVideoUploadProgress(p.percent),
+      });
       form.setValue('video_url', url);
       toast.success(t('success'));
-    } catch (error: any) {
-      toast.error(error.message || t('error'));
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('error'));
     } finally {
       setUploading(false);
+      setUploadingVideo(false);
     }
   };
 
@@ -183,8 +214,8 @@ export default function PostForm() {
       const url = await uploadImage(file);
       form.setValue('video_thumbnail', url);
       toast.success(t('success'));
-    } catch (error: any) {
-      toast.error(error.message || t('error'));
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('error'));
     } finally {
       setUploading(false);
     }
@@ -222,20 +253,20 @@ export default function PostForm() {
       if (id && id !== 'new') {
         const { error } = await supabase
           .from('posts')
-          .update(postData as any)
+          .update(postData as Record<string, unknown>)
           .eq('id', id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('posts')
-          .insert(postData as any);
+          .insert(postData as Record<string, unknown>);
         if (error) throw error;
       }
 
       toast.success(t('success'));
       navigate('/admin/posts');
-    } catch (error: any) {
-      toast.error(error.message || t('error'));
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('error'));
     } finally {
       setLoading(false);
     }
@@ -526,6 +557,15 @@ export default function PostForm() {
                         <Upload className="w-4 h-4 mr-2" />
                         {uploading ? t('loading') : 'Upload video'}
                       </Button>
+
+                      {uploadingVideo && (
+                        <div className="space-y-2">
+                          <div className="text-xs text-muted-foreground">
+                            Uploading… {Math.round(videoUploadProgress)}%
+                          </div>
+                          <Progress value={videoUploadProgress} />
+                        </div>
+                      )}
                     </div>
                   </div>
 

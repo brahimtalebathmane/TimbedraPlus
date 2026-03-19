@@ -84,8 +84,9 @@ export default function Article() {
   const title = post[`title_${currentLang}` as keyof Post] as string;
   const content = post[`content_${currentLang}` as keyof Post] as string;
   const isVideoPost = post.content_type === 'video';
-  const videoUrl = (post as any).video_url as string | null | undefined;
-  const videoThumbnail = (post as any).video_thumbnail as string | null | undefined;
+  const extra = post as unknown as { video_url?: string | null; video_thumbnail?: string | null };
+  const videoUrl = extra.video_url;
+  const videoThumbnail = extra.video_thumbnail;
   const videoEmbedUrl = videoUrl ? getVideoEmbedUrl(videoUrl) : null;
 
   return (

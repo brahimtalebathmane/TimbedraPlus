@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { ArrowLeft, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { uploadImage, uploadVideo, getVideoEmbedUrl, getImagePath } from '@/lib/helpers';
+import { uploadImage, uploadVideoWithProgress, getVideoEmbedUrl, getImagePath } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -20,6 +20,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { getErrorMessage } from '@/lib/utils';
 
 const videoSchema = z.object({
   title_ar: z.string().min(2),
@@ -37,6 +39,8 @@ export default function VideoForm() {
 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
 
   const form = useForm<VideoFormValues>({
@@ -70,8 +74,8 @@ export default function VideoForm() {
           });
           setThumbnailPreview(data.thumbnail);
         }
-      } catch (err: any) {
-        toast.error(err?.message || t('error'));
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err) || t('error'));
       } finally {
         setLoading(false);
       }
@@ -91,8 +95,8 @@ export default function VideoForm() {
       form.setValue('thumbnail', url);
       setThumbnailPreview(url);
       toast.success(t('success'));
-    } catch (err: any) {
-      toast.error(err?.message || t('error'));
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || t('error'));
     } finally {
       setUploading(false);
     }
@@ -103,14 +107,19 @@ export default function VideoForm() {
     if (!file) return;
 
     setUploading(true);
+    setUploadingVideo(true);
+    setVideoUploadProgress(0);
     try {
-      const url = await uploadVideo(file);
+      const url = await uploadVideoWithProgress(file, {
+        onProgress: (p) => setVideoUploadProgress(p.percent),
+      });
       form.setValue('video_url', url);
       toast.success(t('success'));
-    } catch (err: any) {
-      toast.error(err?.message || t('error'));
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || t('error'));
     } finally {
       setUploading(false);
+      setUploadingVideo(false);
     }
   };
 
@@ -127,8 +136,8 @@ export default function VideoForm() {
 
       toast.success(t('success'));
       navigate('/admin/videos');
-    } catch (err: any) {
-      toast.error(err?.message || t('error'));
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || t('error'));
     } finally {
       setLoading(false);
     }
@@ -213,7 +222,7 @@ export default function VideoForm() {
 
               <div>
                 <FormLabel>Or upload MP4</FormLabel>
-                <div className="mt-2">
+                <div className="mt-2 space-y-3">
                   <input
                     type="file"
                     accept="video/mp4"
@@ -231,6 +240,15 @@ export default function VideoForm() {
                     <Upload className="w-4 h-4 mr-2" />
                     {uploading ? t('loading') : 'Upload video'}
                   </Button>
+
+                  {uploadingVideo && (
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground">
+                        Uploading… {Math.round(videoUploadProgress)}%
+                      </div>
+                      <Progress value={videoUploadProgress} />
+                    </div>
+                  )}
                 </div>
               </div>
 
