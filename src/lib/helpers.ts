@@ -130,8 +130,9 @@ export async function uploadVideo(file: File, bucket: string = 'news-videos'): P
   const filePath = `videos/${year}/${month}/${fileName}`;
 
   // Fallback/no-progress upload.
-  const { error } = await supabase.storage.from(bucket).upload(filePath, file, {
-    // Helps prevent content sniffing issues in some browsers.
+  // IMPORTANT: pass raw binary (ArrayBuffer) so storage-js does not use multipart/form-data.
+  const fileBytes = await file.arrayBuffer();
+  const { error } = await supabase.storage.from(bucket).upload(filePath, fileBytes, {
     contentType: mimeType,
   });
   if (error) throw error;
@@ -216,7 +217,8 @@ export async function uploadVideoWithProgress(
       const xhr = new XMLHttpRequest();
       xhr.open('PUT', signedUrl, true);
       xhr.timeout = timeoutMs;
-      // storage-js includes x-upsert header for signed uploads.
+      xhr.setRequestHeader('Content-Type', mimeType);
+      // Keep upsert header to match storage-js behavior.
       xhr.setRequestHeader('x-upsert', 'false');
 
       xhr.upload.onprogress = (evt) => {
@@ -243,19 +245,9 @@ export async function uploadVideoWithProgress(
         reject(new Error(`Video upload failed (${xhr.status}): ${xhr.responseText || xhr.statusText}`));
       };
 
-      // storage-js uses multipart/form-data when uploading Blob/File bodies.
-      // This avoids 400 Bad Request responses from signed upload endpoints.
-      const shouldUseFormData = typeof Blob !== 'undefined' && file instanceof Blob;
-      if (shouldUseFormData) {
-        const form = new FormData();
-        form.append('cacheControl', '3600');
-        form.append('', file);
-        xhr.send(form);
-      } else {
-        // Non-Blob environments (shouldn't happen in the browser) fall back to raw bytes.
-        xhr.setRequestHeader('Content-Type', mimeType);
-        xhr.send(file);
-      }
+      // IMPORTANT: user-requested constraint: do NOT use multipart/form-data.
+      // Send raw File bytes to the signed upload URL.
+      xhr.send(file);
     });
 
     // Ensure UI reaches 100%.
