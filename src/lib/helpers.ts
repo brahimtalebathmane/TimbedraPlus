@@ -68,6 +68,52 @@ export async function uploadImage(file: File, bucket: string = 'news-images'): P
   return data.publicUrl;
 }
 
+function getVideoMimeType(file: File): string {
+  const providedType = file.type?.trim();
+  if (providedType && providedType.startsWith('video/')) return providedType;
+
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  switch (ext) {
+    case 'mp4':
+      return 'video/mp4';
+    case 'webm':
+      return 'video/webm';
+    case 'mov':
+      return 'video/quicktime';
+    case 'm4v':
+      return 'video/x-m4v';
+    case 'mkv':
+      return 'video/x-matroska';
+    case 'ogg':
+      return 'video/ogg';
+    case '3gp':
+      return 'video/3gpp';
+    default:
+      return 'video/mp4';
+  }
+}
+
+function getExtensionFromMimeType(mimeType: string): string {
+  switch (mimeType) {
+    case 'video/mp4':
+      return 'mp4';
+    case 'video/webm':
+      return 'webm';
+    case 'video/quicktime':
+      return 'mov';
+    case 'video/x-m4v':
+      return 'm4v';
+    case 'video/x-matroska':
+      return 'mkv';
+    case 'video/ogg':
+      return 'ogg';
+    case 'video/3gpp':
+      return '3gp';
+    default:
+      return 'mp4';
+  }
+}
+
 export async function uploadVideo(file: File, bucket: string = 'news-videos'): Promise<string> {
   const { supabase } = await import('./supabase');
 
@@ -77,14 +123,16 @@ export async function uploadVideo(file: File, bucket: string = 'news-videos'): P
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const uuid = crypto.randomUUID();
-  const fileExt = file.name.split('.').pop() || 'mp4';
-  const fileName = `${uuid}.${fileExt}`;
+  const mimeType = getVideoMimeType(file);
+  const rawExt = (file.name.split('.').pop() || '').toLowerCase();
+  const safeExt = /^[a-z0-9]+$/.test(rawExt) ? rawExt : getExtensionFromMimeType(mimeType);
+  const fileName = `${uuid}.${safeExt}`;
   const filePath = `videos/${year}/${month}/${fileName}`;
 
   // Fallback/no-progress upload.
   const { error } = await supabase.storage.from(bucket).upload(filePath, file, {
     // Helps prevent content sniffing issues in some browsers.
-    contentType: file.type || 'video/mp4',
+    contentType: mimeType,
   });
   if (error) throw error;
 
@@ -119,8 +167,10 @@ export async function uploadVideoWithProgress(
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const uuid = crypto.randomUUID();
-  const fileExt = file.name.split('.').pop() || 'mp4';
-  const fileName = `${uuid}.${fileExt}`;
+  const mimeType = getVideoMimeType(file);
+  const rawExt = (file.name.split('.').pop() || '').toLowerCase();
+  const safeExt = /^[a-z0-9]+$/.test(rawExt) ? rawExt : getExtensionFromMimeType(mimeType);
+  const fileName = `${uuid}.${safeExt}`;
   const filePath = `videos/${year}/${month}/${fileName}`;
 
   // Prefer signed upload URL so we can track upload progress.
@@ -150,7 +200,7 @@ export async function uploadVideoWithProgress(
       const xhr = new XMLHttpRequest();
       xhr.open('PUT', signedUrl, true);
       xhr.timeout = timeoutMs;
-      xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+      xhr.setRequestHeader('Content-Type', mimeType);
 
       xhr.upload.onprogress = (evt) => {
         if (!evt.lengthComputable) return;

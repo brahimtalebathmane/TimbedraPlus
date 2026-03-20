@@ -538,11 +538,11 @@ export default function PostForm() {
                   />
 
                   <div>
-                    <FormLabel>Upload MP4</FormLabel>
+                    <FormLabel>Upload video</FormLabel>
                     <div className="mt-2 space-y-4">
                       <input
                         type="file"
-                        accept="video/mp4"
+                        accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/x-matroska"
                         onChange={handleVideoUpload}
                         className="hidden"
                         id="video-upload"

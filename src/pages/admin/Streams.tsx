@@ -195,10 +195,10 @@ export default function StreamsAdmin() {
           </div>
 
           <div>
-            <div className="text-sm text-muted-foreground mb-2">Or upload MP4</div>
+            <div className="text-sm text-muted-foreground mb-2">Or upload video</div>
             <input
               type="file"
-              accept="video/mp4"
+              accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/x-matroska"
               onChange={onUploadMp4}
               className="hidden"
               id="stream-mp4-upload"
@@ -212,7 +212,7 @@ export default function StreamsAdmin() {
                 disabled={uploading}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                {uploading ? t('loading') : 'Upload mp4'}
+                {uploading ? t('loading') : 'Upload video'}
               </Button>
 
               {uploading && (

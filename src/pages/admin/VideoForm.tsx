@@ -221,11 +221,11 @@ export default function VideoForm() {
               />
 
               <div>
-                <FormLabel>Or upload MP4</FormLabel>
+                <FormLabel>Or upload video</FormLabel>
                 <div className="mt-2 space-y-3">
                   <input
                     type="file"
-                    accept="video/mp4"
+                    accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/x-matroska"
                     onChange={handleVideoUpload}
                     className="hidden"
                     id="video-upload-admin"
