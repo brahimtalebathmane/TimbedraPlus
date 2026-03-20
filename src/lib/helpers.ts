@@ -155,6 +155,67 @@ type UploadProgress = {
  * Uploads a video with real client-side progress.
  * Uses a signed upload URL (when available) + XHR to report progress.
  */
+async function authHeadersForStorageUpload(): Promise<Record<string, string>> {
+  const { supabase } = await import('./supabase');
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+
+  const headers: Record<string, string> = {};
+  if (anonKey) headers.apikey = anonKey;
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  return headers;
+}
+
+/**
+ * PUT binary to a signed upload URL using the same headers @supabase/storage-js would send.
+ * Raw ArrayBuffer body avoids multipart/form-data (File/Blob would be sent as FormData by the SDK).
+ */
+function putSignedVideoWithProgress(
+  signedUrl: string,
+  fileBytes: ArrayBuffer,
+  mimeType: string,
+  timeoutMs: number,
+  extraHeaders: Record<string, string>,
+  onProgress?: (progress: UploadProgress) => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', signedUrl, true);
+    xhr.timeout = timeoutMs;
+
+    for (const [k, v] of Object.entries(extraHeaders)) {
+      xhr.setRequestHeader(k, v);
+    }
+    xhr.setRequestHeader('Content-Type', mimeType);
+    xhr.setRequestHeader('x-upsert', 'false');
+    xhr.setRequestHeader('cache-control', 'max-age=3600');
+
+    xhr.upload.onprogress = (evt) => {
+      if (!evt.lengthComputable) return;
+      const percent = evt.total > 0 ? (evt.loaded / evt.total) * 100 : 0;
+      onProgress?.({
+        loaded: evt.loaded,
+        total: evt.total,
+        percent: Math.max(0, Math.min(100, percent)),
+      });
+    };
+
+    xhr.onerror = () => reject(new Error('Video upload failed (network error).'));
+    xhr.ontimeout = () => reject(new Error('Video upload timed out.'));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) return resolve();
+      console.warn('Signed upload PUT failed', {
+        xhrStatus: xhr.status,
+        responseText: xhr.responseText,
+      });
+      reject(new Error(`Video upload failed (${xhr.status}): ${xhr.responseText || xhr.statusText}`));
+    };
+
+    xhr.send(fileBytes);
+  });
+}
+
 export async function uploadVideoWithProgress(
   file: File,
   opts?: {
@@ -167,10 +228,6 @@ export async function uploadVideoWithProgress(
 
   const bucket = opts?.bucket ?? 'news-videos';
   const timeoutMs = opts?.timeoutMs ?? 5 * 60 * 1000; // 5 minutes
-  const expiresIn = 3600; // seconds (matches typical Supabase defaults)
-  if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
-    throw new Error(`Invalid expiresIn: ${String(expiresIn)}`);
-  }
 
   const now = new Date();
   const year = now.getFullYear();
@@ -182,91 +239,54 @@ export async function uploadVideoWithProgress(
   const fileName = `${uuid}.${safeExt}`;
   const filePath = `videos/${year}/${month}/${fileName}`;
   const fileBytes = await file.arrayBuffer();
+  const storage = supabase.storage.from(bucket);
 
-  // Prefer signed upload URL so we can track upload progress.
-  // If the client version doesn't support it (or it fails), fall back to supabase-js upload.
-  try {
-    type SignedUploadData = { signedUrl: string; token: string; path: string } | null;
-    type SignedUploadResponse = { data: SignedUploadData; error: unknown | null };
-    type SignedUploadOptions = { upsert?: boolean; expiresIn?: number };
-    type StorageBucket = ReturnType<typeof supabase.storage.from>;
-    type StorageWithSignedUpload = StorageBucket & {
-      createSignedUploadUrl?: (path: string, options?: SignedUploadOptions) => Promise<SignedUploadResponse>;
-    };
-
-    const storage = supabase.storage.from(bucket) as unknown as StorageWithSignedUpload;
-    if (typeof storage.createSignedUploadUrl !== 'function') {
-      return await uploadVideo(file, bucket);
-    }
-
-    // IMPORTANT:
-    // - filePath is the internal object path ONLY (no bucket name).
-    // - expiresIn is always provided and validated above.
-    const { data, error } = await storage.createSignedUploadUrl(filePath, {
-      upsert: false,
-      expiresIn,
-    });
-    if (error) {
-      // Log full signed-upload generation failure to help diagnose 400s.
-      console.warn('Supabase createSignedUploadUrl() failed', { bucket, filePath, expiresIn, error });
-      throw error;
-    }
-
-    const signedUrl: string | undefined = data?.signedUrl;
-    const token: string | undefined = data?.token;
-    if (!signedUrl) {
-      return await uploadVideo(file, bucket);
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('PUT', signedUrl, true);
-      xhr.timeout = timeoutMs;
-      xhr.setRequestHeader('Content-Type', mimeType);
-      // Keep upsert header to match storage-js behavior.
-      xhr.setRequestHeader('x-upsert', 'false');
-      xhr.setRequestHeader('cache-control', 'max-age=3600');
-
-      xhr.upload.onprogress = (evt) => {
-        if (!evt.lengthComputable) return;
-        const percent = evt.total > 0 ? (evt.loaded / evt.total) * 100 : 0;
-        opts?.onProgress?.({
-          loaded: evt.loaded,
-          total: evt.total,
-          percent: Math.max(0, Math.min(100, percent)),
-        });
-      };
-
-      xhr.onerror = () => reject(new Error('Video upload failed (network error).'));
-      xhr.ontimeout = () => reject(new Error('Video upload timed out.'));
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) return resolve();
-        console.warn('Signed upload PUT failed', {
-          bucket,
-          filePath,
-          xhrStatus: xhr.status,
-          tokenPresent: Boolean(token),
-          responseText: xhr.responseText,
-        });
-        reject(new Error(`Video upload failed (${xhr.status}): ${xhr.responseText || xhr.statusText}`));
-      };
-
-      // IMPORTANT: user-requested constraint: do NOT use multipart/form-data.
-      // Send raw binary bytes to the signed upload URL.
-      xhr.send(fileBytes);
-    });
-
-    // Ensure UI reaches 100%.
-    opts?.onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
-
-    const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-    return publicData.publicUrl;
-  } catch (err) {
-    console.warn('Signed upload flow failed; falling back to normal upload.', err);
-    // Fall back to the standard upload path (no progress).
-    const url = await uploadVideo(file, bucket);
+  const finish = async (url: string) => {
     opts?.onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
     return url;
+  };
+
+  try {
+    const { data: signed, error: signError } = await storage.createSignedUploadUrl(filePath, {
+      upsert: false,
+    });
+
+    if (signError || !signed?.signedUrl || !signed?.token) {
+      console.warn('createSignedUploadUrl failed; using standard upload.', signError);
+      return finish(await uploadVideo(file, bucket));
+    }
+
+    const { signedUrl, token } = signed;
+
+    try {
+      if (opts?.onProgress) {
+        const extra = await authHeadersForStorageUpload();
+        await putSignedVideoWithProgress(
+          signedUrl,
+          fileBytes,
+          mimeType,
+          timeoutMs,
+          extra,
+          opts.onProgress
+        );
+      } else {
+        const { error: upErr } = await storage.uploadToSignedUrl(filePath, token, fileBytes, {
+          contentType: mimeType,
+          cacheControl: '3600',
+          upsert: false,
+        });
+        if (upErr) throw upErr;
+      }
+
+      const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+      return finish(publicData.publicUrl);
+    } catch (putErr) {
+      console.warn('Signed upload PUT/uploadToSignedUrl failed; falling back to standard upload.', putErr);
+      return finish(await uploadVideo(file, bucket));
+    }
+  } catch (err) {
+    console.warn('Signed upload flow failed; falling back to normal upload.', err);
+    return finish(await uploadVideo(file, bucket));
   }
 }
 
