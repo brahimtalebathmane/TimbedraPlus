@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { Button } from '@/components/ui/button';
 import { supabase, Post, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE } from '@/lib/supabase';
-import { formatDate, formatRelativeTime, getImagePath, getVideoEmbedUrl, truncateText } from '@/lib/helpers';
+import { formatDate, formatRelativeTime, getPostThumbnailPath, getVideoEmbedUrl, truncateText } from '@/lib/helpers';
 
 export default function Article() {
   const { slug } = useParams<{ slug: string }>();
@@ -101,14 +101,27 @@ export default function Article() {
         <meta property="og:description" content={truncateText(content, 160)} />
         <meta
           property="og:image"
-          content={isVideoPost ? (videoThumbnail ? getImagePath(videoThumbnail) : getImagePath(post.image_url)) : getImagePath(post.image_url)}
+          content={getPostThumbnailPath({
+            content_type: post.content_type,
+            image_url: post.image_url,
+            video_url: videoUrl,
+            video_thumbnail: videoThumbnail,
+          })}
         />
         <meta property="og:url" content={shareUrl} />
         <meta property="og:type" content="article" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={truncateText(content, 160)} />
-        <meta name="twitter:image" content={getImagePath(post.image_url)} />
+        <meta
+          name="twitter:image"
+          content={getPostThumbnailPath({
+            content_type: post.content_type,
+            image_url: post.image_url,
+            video_url: videoUrl,
+            video_thumbnail: videoThumbnail,
+          })}
+        />
         <link rel="canonical" href={shareUrl} />
       </Helmet>
 
@@ -157,7 +170,12 @@ export default function Article() {
               )
             ) : (
               <img
-                src={getImagePath(post.image_url)}
+                src={getPostThumbnailPath({
+                  content_type: post.content_type,
+                  image_url: post.image_url,
+                  video_url: videoUrl,
+                  video_thumbnail: videoThumbnail,
+                })}
                 alt={title}
                 className="w-full h-full object-cover"
               />
@@ -223,7 +241,12 @@ export default function Article() {
                     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
                       <div className="relative aspect-video">
                         <img
-                          src={getImagePath(relatedPost.image_url)}
+                          src={getPostThumbnailPath({
+                            content_type: relatedPost.content_type,
+                            image_url: relatedPost.image_url,
+                            video_url: relatedPost.video_url,
+                            video_thumbnail: relatedPost.video_thumbnail,
+                          })}
                           alt={relatedPost[`title_${currentLang}` as keyof Post] as string}
                           className="w-full h-full object-cover"
                           loading="lazy"

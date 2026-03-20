@@ -13,10 +13,12 @@ import {
   Post,
   Video,
   IMAGE_CONTENT_TYPES,
+  VIDEO_CONTENT_TYPE,
   Category,
   LEGACY_IMAGE_CONTENT_TYPES,
+  LEGACY_VIDEO_CONTENT_TYPE,
 } from '@/lib/supabase';
-import { formatRelativeTime, truncateText, getImagePath, getYouTubeThumbnailUrl } from '@/lib/helpers';
+import { formatRelativeTime, truncateText, getYouTubeThumbnailUrl, getPostThumbnailPath } from '@/lib/helpers';
 
 type TopNewsPost = Pick<
   Post,
@@ -27,6 +29,8 @@ type TopNewsPost = Pick<
   | 'content_fr'
   | 'slug'
   | 'image_url'
+  | 'video_url'
+  | 'video_thumbnail'
   | 'content_type'
   | 'is_breaking'
   | 'created_at'
@@ -53,6 +57,7 @@ const HOME_SECTION_RENDER_ORDER: HomeSectionKey[] = [
 ];
 
 const IMAGE_TYPES = [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES];
+const POST_DISPLAY_TYPES = [...IMAGE_TYPES, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE];
 
 type SectionDef = {
   key: HomeSectionKey;
@@ -112,18 +117,18 @@ export default function Home() {
   const fetchTopNews = async () => {
     const featuredRes = await supabase
       .from('posts')
-      .select('id, title_ar, title_fr, slug, image_url, content_type, is_breaking, created_at, content_ar, content_fr')
+      .select('id, title_ar, title_fr, slug, image_url, video_url, video_thumbnail, content_type, is_breaking, created_at, content_ar, content_fr')
       .eq('status', 'published')
       .eq('is_breaking', true)
-      .in('content_type', IMAGE_TYPES as string[])
+      .in('content_type', POST_DISPLAY_TYPES as string[])
       .order('created_at', { ascending: false })
       .limit(5);
 
     const latestRes = await supabase
       .from('posts')
-      .select('id, title_ar, title_fr, slug, image_url, content_type, is_breaking, created_at, content_ar, content_fr')
+      .select('id, title_ar, title_fr, slug, image_url, video_url, video_thumbnail, content_type, is_breaking, created_at, content_ar, content_fr')
       .eq('status', 'published')
-      .in('content_type', IMAGE_TYPES as string[])
+      .in('content_type', POST_DISPLAY_TYPES as string[])
       .order('created_at', { ascending: false })
       .limit(12);
 
@@ -155,7 +160,7 @@ export default function Home() {
       .from('posts')
       .select('*, category:categories(*), author:profiles(*)')
       .eq('status', 'published')
-      .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES] as string[])
+      .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE] as string[])
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -175,7 +180,7 @@ export default function Home() {
       .from('posts')
       .select('*, category:categories(*)')
       .eq('status', 'published')
-      .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES] as string[])
+      .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE] as string[])
       .order('created_at', { ascending: false })
       .limit(5);
 
@@ -242,11 +247,11 @@ export default function Home() {
           supabase
             .from('posts')
             .select(
-              'id, title_ar, title_fr, content_ar, content_fr, slug, image_url, category_id, created_at, content_type, is_breaking',
+              'id, title_ar, title_fr, content_ar, content_fr, slug, image_url, video_url, video_thumbnail, category_id, created_at, content_type, is_breaking',
             )
             .eq('status', 'published')
             .eq('category_id', cat.id)
-            .in('content_type', IMAGE_TYPES as string[])
+              .in('content_type', POST_DISPLAY_TYPES as string[])
             .order('created_at', { ascending: false })
             .limit(4)
             .then(({ data }) => [def.key, (data as Post[]) ?? []] as [HomeSectionKey, Post[]]),
@@ -299,7 +304,12 @@ export default function Home() {
                     <div className="overflow-hidden rounded-xl bg-card shadow-sm hover:shadow-md transition-shadow">
                       <div className="relative">
                         <img
-                          src={getImagePath(topNews[slideIndex].image_url)}
+                          src={getPostThumbnailPath({
+                            content_type: topNews[slideIndex].content_type,
+                            image_url: topNews[slideIndex].image_url,
+                            video_url: topNews[slideIndex].video_url,
+                            video_thumbnail: topNews[slideIndex].video_thumbnail,
+                          })}
                           alt={
                             topNews[slideIndex][`title_${currentLang}` as keyof TopNewsPost] as string
                           }
@@ -349,7 +359,12 @@ export default function Home() {
                           <div className={`flex gap-3 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
                             <div className="relative w-20 h-14 rounded-md overflow-hidden flex-shrink-0">
                               <img
-                                src={getImagePath(post.image_url)}
+                                src={getPostThumbnailPath({
+                                  content_type: post.content_type,
+                                  image_url: post.image_url,
+                                  video_url: post.video_url,
+                                  video_thumbnail: post.video_thumbnail,
+                                })}
                                 alt={post[`title_${currentLang}` as keyof TopNewsPost] as string}
                                 className="w-full h-full object-cover"
                                 loading="lazy"
@@ -461,7 +476,12 @@ export default function Home() {
                       <Card className="overflow-hidden hover:shadow-lg hover:scale-105 transition-all duration-300">
                         <div className="relative aspect-video">
                           <img
-                            src={getImagePath(post.image_url)}
+                            src={getPostThumbnailPath({
+                              content_type: post.content_type,
+                              image_url: post.image_url,
+                              video_url: post.video_url,
+                              video_thumbnail: post.video_thumbnail,
+                            })}
                             alt={post[`title_${currentLang}` as keyof Post] as string}
                             className="w-full h-full object-cover"
                             loading="lazy"
@@ -570,7 +590,12 @@ export default function Home() {
                         >
                           <div className="relative w-20 h-14 rounded-md overflow-hidden flex-shrink-0">
                             <img
-                              src={getImagePath(post.image_url)}
+                              src={getPostThumbnailPath({
+                                content_type: post.content_type,
+                                image_url: post.image_url,
+                                video_url: post.video_url,
+                                video_thumbnail: post.video_thumbnail,
+                              })}
                               alt={post[`title_${currentLang}` as keyof Post] as string}
                               className="w-full h-full object-cover"
                               loading="lazy"
@@ -622,7 +647,12 @@ export default function Home() {
                         <div className="rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-card">
                           <div className="relative aspect-[4/3]">
                             <img
-                              src={getImagePath(post.image_url)}
+                              src={getPostThumbnailPath({
+                                content_type: post.content_type,
+                                image_url: post.image_url,
+                                video_url: post.video_url,
+                                video_thumbnail: post.video_thumbnail,
+                              })}
                               alt={post[`title_${currentLang}` as keyof Post] as string}
                               className="w-full h-full object-cover"
                               loading="lazy"
@@ -730,7 +760,12 @@ export default function Home() {
                         <div className="rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-card">
                           <div className="relative aspect-video">
                             <img
-                              src={getImagePath(post.image_url)}
+                              src={getPostThumbnailPath({
+                                content_type: post.content_type,
+                                image_url: post.image_url,
+                                video_url: post.video_url,
+                                video_thumbnail: post.video_thumbnail,
+                              })}
                               alt={post[`title_${currentLang}` as keyof Post] as string}
                               className="w-full h-full object-cover"
                               loading="lazy"

@@ -377,3 +377,28 @@ export function getYouTubeThumbnailUrl(url: string | null | undefined): string |
   if (!videoId) return null;
   return getYouTubeThumbnailUrlFromVideoId(videoId);
 }
+
+export function getPostThumbnailUrl(input: {
+  content_type?: string | null;
+  image_url?: string | null;
+  video_url?: string | null;
+  video_thumbnail?: string | null;
+}): string | null {
+  const contentType = input.content_type ?? '';
+  const isVideoPost = contentType === 'فيديو' || contentType === 'video';
+
+  if (isVideoPost) {
+    return input.video_thumbnail ?? getYouTubeThumbnailUrl(input.video_url) ?? null;
+  }
+
+  return input.image_url ?? null;
+}
+
+export function getPostThumbnailPath(input: {
+  content_type?: string | null;
+  image_url?: string | null;
+  video_url?: string | null;
+  video_thumbnail?: string | null;
+}): string {
+  return getImagePath(getPostThumbnailUrl(input));
+}

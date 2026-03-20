@@ -11,8 +11,10 @@ import {
   Post,
   IMAGE_CONTENT_TYPES,
   LEGACY_IMAGE_CONTENT_TYPES,
+  VIDEO_CONTENT_TYPE,
+  LEGACY_VIDEO_CONTENT_TYPE,
 } from '@/lib/supabase';
-import { getImagePath, formatRelativeTime, truncateText } from '@/lib/helpers';
+import { getPostThumbnailPath, formatRelativeTime, truncateText } from '@/lib/helpers';
 
 export default function Category() {
   const { t, i18n } = useTranslation();
@@ -43,7 +45,7 @@ export default function Category() {
           .select('*, category:categories(*), author:profiles(*)')
           .eq('status', 'published')
           .eq('category_id', cat?.id || '')
-          .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES] as string[])
+          .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE] as string[])
           .order('created_at', { ascending: false })
           .limit(24);
 
@@ -97,7 +99,12 @@ export default function Category() {
               <div className="mb-10">
                 <div className="relative overflow-hidden rounded-xl">
                   <img
-                    src={getImagePath(featuredPost.image_url)}
+                    src={getPostThumbnailPath({
+                      content_type: featuredPost.content_type,
+                      image_url: featuredPost.image_url,
+                      video_url: featuredPost.video_url,
+                      video_thumbnail: featuredPost.video_thumbnail,
+                    })}
                     alt={featuredPost[`title_${currentLang}` as keyof Post] as string}
                     className="w-full h-72 md:h-96 object-cover"
                     loading="lazy"
@@ -150,7 +157,12 @@ export default function Category() {
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="relative aspect-video">
                       <img
-                        src={getImagePath(post.image_url)}
+                    src={getPostThumbnailPath({
+                      content_type: post.content_type,
+                      image_url: post.image_url,
+                      video_url: post.video_url,
+                      video_thumbnail: post.video_thumbnail,
+                    })}
                         alt={post[`title_${currentLang}` as keyof Post] as string}
                         className="w-full h-full object-cover"
                         loading="lazy"

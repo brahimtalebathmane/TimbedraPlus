@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { supabase, Post } from '@/lib/supabase';
-import { formatRelativeTime, truncateText, getImagePath } from '@/lib/helpers';
+import { formatRelativeTime, truncateText, getPostThumbnailPath } from '@/lib/helpers';
 
 export default function Search() {
   const [searchParams] = useSearchParams();
@@ -100,7 +100,12 @@ export default function Search() {
                   <Card className="overflow-hidden hover:shadow-lg hover:scale-105 transition-all duration-300">
                     <div className="relative aspect-video">
                       <img
-                        src={getImagePath(post.image_url)}
+                        src={getPostThumbnailPath({
+                          content_type: post.content_type,
+                          image_url: post.image_url,
+                          video_url: post.video_url,
+                          video_thumbnail: post.video_thumbnail,
+                        })}
                         alt={post[`title_${currentLang}` as keyof Post] as string}
                         className="w-full h-full object-cover"
                         loading="lazy"
