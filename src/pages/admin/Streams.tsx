@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, Pencil, Plus } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, LiveStream } from '@/lib/supabase';
-import { uploadVideoWithProgress } from '@/lib/helpers';
+import { extractYouTubeVideoId, normalizeYouTubeUrl } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { getErrorMessage } from '@/lib/utils';
 import {
   AlertDialog,
@@ -43,8 +42,6 @@ export default function StreamsAdmin() {
   const [title, setTitle] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [isActive, setIsActive] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const fetchStreams = async () => {
     const { data } = await supabase
@@ -75,27 +72,16 @@ export default function StreamsAdmin() {
     setIsActive(false);
   };
 
-  const onUploadMp4 = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setUploadProgress(0);
-    try {
-      const url = await uploadVideoWithProgress(file, {
-        onProgress: (p) => setUploadProgress(p.percent),
-      });
-      setVideoUrl(url);
-      toast.success(t('success'));
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || t('error'));
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleSubmit = async () => {
     if (!title.trim() || !videoUrl.trim()) {
       toast.error(t('error'));
+      return;
+    }
+
+    const normalizedVideoUrl = normalizeYouTubeUrl(videoUrl.trim());
+    const videoId = extractYouTubeVideoId(videoUrl.trim());
+    if (!normalizedVideoUrl || !videoId) {
+      toast.error('Invalid YouTube URL');
       return;
     }
 
@@ -108,7 +94,7 @@ export default function StreamsAdmin() {
       if (editingId) {
         const { error } = await supabase.from('live_streams').update({
           title: title.trim(),
-          video_url: videoUrl.trim(),
+          video_url: normalizedVideoUrl,
           is_active: isActive,
           updated_at: new Date().toISOString(),
         }).eq('id', editingId);
@@ -118,7 +104,7 @@ export default function StreamsAdmin() {
         const { error } = await supabase.from('live_streams').insert([
           {
             title: title.trim(),
-            video_url: videoUrl.trim(),
+            video_url: normalizedVideoUrl,
             is_active: isActive,
           },
         ]);
@@ -190,40 +176,8 @@ export default function StreamsAdmin() {
               value={videoUrl}
               onChange={(e) => setVideoUrl(e.target.value)}
               rows={3}
-              placeholder="YouTube/Vimeo link or uploaded MP4 URL"
+                placeholder="YouTube watch/embed/shorts URL"
             />
-          </div>
-
-          <div>
-            <div className="text-sm text-muted-foreground mb-2">Or upload video</div>
-            <input
-              type="file"
-              accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/x-matroska"
-              onChange={onUploadMp4}
-              className="hidden"
-              id="stream-mp4-upload"
-              disabled={uploading}
-            />
-            <div className="space-y-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => document.getElementById('stream-mp4-upload')?.click()}
-                disabled={uploading}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                {uploading ? t('loading') : 'Upload video'}
-              </Button>
-
-              {uploading && (
-                <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground">
-                    Uploading… {Math.round(uploadProgress)}%
-                  </div>
-                  <Progress value={uploadProgress} />
-                </div>
-              )}
-            </div>
           </div>
 
           <div className="flex gap-4">

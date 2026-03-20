@@ -28,12 +28,9 @@ function Player({ stream }: { stream: LiveStream }) {
   }
 
   return (
-    <video
-      src={stream.video_url}
-      controls
-      poster={undefined}
-      className="w-full h-full bg-black object-cover"
-    />
+    <div className="w-full h-full bg-black flex items-center justify-center text-muted-foreground text-sm px-4">
+      Invalid YouTube stream URL
+    </div>
   );
 }
 

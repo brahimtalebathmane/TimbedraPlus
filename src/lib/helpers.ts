@@ -327,26 +327,53 @@ export function getImagePath(url: string | null): string {
 }
 
 export function extractVideoId(url: string): string | null {
-  const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-  if (youtubeMatch) return youtubeMatch[1];
+  return extractYouTubeVideoId(url);
+}
 
-  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-  if (vimeoMatch) return vimeoMatch[1];
+export function getVideoEmbedUrl(url: string): string | null {
+  const videoId = extractYouTubeVideoId(url);
+  if (!videoId) return null;
+  return `https://www.youtube.com/embed/${videoId}`;
+}
+
+export function extractYouTubeVideoId(url: string): string | null {
+  // Supports:
+  // - https://www.youtube.com/watch?v=VIDEO_ID
+  // - https://youtu.be/VIDEO_ID
+  // - https://www.youtube.com/embed/VIDEO_ID
+  // - https://www.youtube.com/shorts/VIDEO_ID
+  // - https://www.youtube.com/live/VIDEO_ID
+  const patterns: RegExp[] = [
+    /youtube\.com\/watch\?v=([^&\s?#]+)/i,
+    /youtu\.be\/([^&\s?#]+)/i,
+    /youtube\.com\/embed\/([^&\s?#]+)/i,
+    /youtube\.com\/shorts\/([^&\s?#]+)/i,
+    /youtube\.com\/live\/([^&\s?#]+)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    const candidate = match?.[1];
+    if (candidate && /^[0-9A-Za-z_-]{11}$/.test(candidate)) return candidate;
+  }
 
   return null;
 }
 
-export function getVideoEmbedUrl(url: string): string | null {
-  const videoId = extractVideoId(url);
+export function normalizeYouTubeUrl(url: string): string | null {
+  const videoId = extractYouTubeVideoId(url);
   if (!videoId) return null;
+  return `https://www.youtube.com/watch?v=${videoId}`;
+}
 
-  if (url.includes('youtube') || url.includes('youtu.be')) {
-    return `https://www.youtube.com/embed/${videoId}`;
-  }
+export function getYouTubeThumbnailUrlFromVideoId(videoId: string): string {
+  // `hqdefault.jpg` is reliable and avoids some failures with `maxresdefault.jpg`.
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+}
 
-  if (url.includes('vimeo')) {
-    return `https://player.vimeo.com/video/${videoId}`;
-  }
-
-  return null;
+export function getYouTubeThumbnailUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const videoId = extractYouTubeVideoId(url);
+  if (!videoId) return null;
+  return getYouTubeThumbnailUrlFromVideoId(videoId);
 }

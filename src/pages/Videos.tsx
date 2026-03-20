@@ -4,9 +4,9 @@ import { Helmet } from 'react-helmet-async';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase, Video } from '@/lib/supabase';
-import { getImagePath, getVideoEmbedUrl, formatRelativeTime } from '@/lib/helpers';
+import { getVideoEmbedUrl, formatRelativeTime } from '@/lib/helpers';
 
-function VideoPlayer({ videoUrl, title, poster }: { videoUrl: string; title: string; poster?: string | null }) {
+function VideoPlayer({ videoUrl, title }: { videoUrl: string; title: string }) {
   const embedUrl = getVideoEmbedUrl(videoUrl);
 
   if (embedUrl) {
@@ -22,12 +22,9 @@ function VideoPlayer({ videoUrl, title, poster }: { videoUrl: string; title: str
   }
 
   return (
-    <video
-      src={videoUrl}
-      controls
-      poster={poster ? getImagePath(poster) : undefined}
-      className="w-full h-full bg-black object-cover"
-    />
+    <div className="w-full h-full bg-black flex items-center justify-center text-muted-foreground text-sm px-4">
+      Invalid YouTube video URL
+    </div>
   );
 }
 
@@ -95,7 +92,7 @@ export default function Videos() {
                 <Card key={video.id} className="overflow-hidden">
                   <CardContent className="p-0">
                     <div className="aspect-video bg-black">
-                      <VideoPlayer videoUrl={video.video_url} title={title} poster={video.thumbnail} />
+                      <VideoPlayer videoUrl={video.video_url} title={title} />
                     </div>
                     <div className="p-4">
                       <div className="flex items-center gap-2 mb-2">

@@ -15,7 +15,7 @@ import {
   Category,
   LEGACY_IMAGE_CONTENT_TYPES,
 } from '@/lib/supabase';
-import { formatRelativeTime, truncateText, getImagePath } from '@/lib/helpers';
+import { formatRelativeTime, truncateText, getImagePath, getYouTubeThumbnailUrl } from '@/lib/helpers';
 
 type TopNewsPost = Pick<
   Post,
@@ -512,12 +512,18 @@ export default function Home() {
                           } items-start hover:bg-muted/30 rounded-lg p-2 transition-colors`}
                         >
                           <div className="relative w-20 h-14 rounded-md overflow-hidden flex-shrink-0">
-                            <img
-                              src={video.thumbnail || 'https://images.pexels.com/photos/3944454/pexels-photo-3944454.jpeg'}
-                              alt={video[`title_${currentLang}` as keyof Video] as string}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
+                                {(() => {
+                                  const fallback = 'https://images.pexels.com/photos/3944454/pexels-photo-3944454.jpeg';
+                                  const thumb = getYouTubeThumbnailUrl(video.video_url) || video.thumbnail || fallback;
+                                  return (
+                                    <img
+                                      src={thumb}
+                                      alt={video[`title_${currentLang}` as keyof Video] as string}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                    />
+                                  );
+                                })()}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="font-bold text-sm line-clamp-2">

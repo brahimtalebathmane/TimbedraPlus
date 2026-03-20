@@ -37,14 +37,14 @@ import {
   generateSlug,
   createSearchVector,
   uploadImage,
-  uploadVideoWithProgress,
   validateTipTapContent,
-  extractVideoId,
+  extractYouTubeVideoId,
   getVideoEmbedUrl,
+  getYouTubeThumbnailUrl,
+  normalizeYouTubeUrl,
 } from '@/lib/helpers';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { Progress } from '@/components/ui/progress';
 import { getErrorMessage } from '@/lib/utils';
 
 const contentTypeEnum = z.enum(CONTENT_TYPES as unknown as [string, ...string[]]);
@@ -60,7 +60,13 @@ const postSchema = z.object({
   }),
   slug: z.string().min(2),
   image_url: z.string().optional().nullable(),
-  video_url: z.string().optional().nullable(),
+  video_url: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((val) => val == null || !!extractYouTubeVideoId(val), {
+      message: 'Invalid YouTube URL',
+    }),
   video_thumbnail: z.string().optional().nullable(),
   category_id: z.string().uuid(),
   status: z.enum(['draft', 'published', 'archived']),
@@ -77,8 +83,6 @@ export default function PostForm() {
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadingVideo, setUploadingVideo] = useState(false);
-  const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -101,6 +105,7 @@ export default function PostForm() {
   });
 
   const contentType = form.watch('content_type');
+  const videoUrl = form.watch('video_url');
 
   useEffect(() => {
     fetchCategories();
@@ -191,43 +196,6 @@ export default function PostForm() {
     }
   };
 
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    setUploadingVideo(true);
-    setVideoUploadProgress(0);
-    try {
-      const url = await uploadVideoWithProgress(file, {
-        onProgress: (p) => setVideoUploadProgress(p.percent),
-      });
-      form.setValue('video_url', url);
-      toast.success(t('success'));
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error) || t('error'));
-    } finally {
-      setUploading(false);
-      setUploadingVideo(false);
-    }
-  };
-
-  const handleVideoThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const url = await uploadImage(file);
-      form.setValue('video_thumbnail', url);
-      toast.success(t('success'));
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error) || t('error'));
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const onSubmit = async (values: PostForm) => {
     setLoading(true);
     try {
@@ -244,6 +212,19 @@ export default function PostForm() {
         author_id: user?.id ?? null,
         updated_at: new Date().toISOString(),
       };
+
+      if (postData.content_type === VIDEO_CONTENT_TYPE) {
+        const rawVideoUrl = postData.video_url;
+        const normalizedVideoUrl = typeof rawVideoUrl === 'string' ? normalizeYouTubeUrl(rawVideoUrl) : null;
+        const videoId = typeof rawVideoUrl === 'string' ? extractYouTubeVideoId(rawVideoUrl) : null;
+
+        if (!normalizedVideoUrl || !videoId) {
+          throw new Error('Invalid YouTube video URL');
+        }
+
+        postData.video_url = normalizedVideoUrl;
+        postData.video_thumbnail = getYouTubeThumbnailUrl(normalizedVideoUrl);
+      }
 
       // Avoid referencing columns with the schema cache when they're not relevant.
       // This prevents failures if the DB is temporarily behind migrations.
@@ -537,7 +518,7 @@ export default function PostForm() {
                           <Input
                             {...field}
                             value={field.value ?? ''}
-                            placeholder="https://youtube.com/... or https://vimeo.com/... or uploaded mp4 URL"
+                            placeholder="https://www.youtube.com/watch?v=VIDEO_ID"
                           />
                         </FormControl>
                         <FormMessage />
@@ -546,67 +527,25 @@ export default function PostForm() {
                   />
 
                   <div>
-                    <FormLabel>Upload video</FormLabel>
+                    <FormLabel>Thumbnail preview</FormLabel>
                     <div className="mt-2 space-y-4">
-                      <input
-                        type="file"
-                        accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/x-matroska"
-                        onChange={handleVideoUpload}
-                        className="hidden"
-                        id="video-upload"
-                        disabled={uploading}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => document.getElementById('video-upload')?.click()}
-                        disabled={uploading}
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {uploading ? t('loading') : 'Upload video'}
-                      </Button>
-
-                      {uploadingVideo && (
-                        <div className="space-y-2">
-                          <div className="text-xs text-muted-foreground">
-                            Uploading… {Math.round(videoUploadProgress)}%
-                          </div>
-                          <Progress value={videoUploadProgress} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <FormLabel>Video Thumbnail</FormLabel>
-                    <div className="mt-2 space-y-4">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleVideoThumbnailUpload}
-                        className="hidden"
-                        id="video-thumbnail-upload"
-                        disabled={uploading}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          document.getElementById('video-thumbnail-upload')?.click()
-                        }
-                        disabled={uploading}
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {uploading ? t('loading') : 'Upload thumbnail'}
-                      </Button>
-
-                      {form.getValues('video_thumbnail') && (
-                        <img
-                          src={form.getValues('video_thumbnail') as string}
-                          alt="Video thumbnail preview"
-                          className="w-full max-w-md h-48 object-cover rounded-lg"
-                          loading="lazy"
-                        />
+                      {videoUrl ? (
+                        (() => {
+                          const thumb = getYouTubeThumbnailUrl(videoUrl);
+                          if (!thumb) {
+                            return <div className="text-sm text-muted-foreground">Paste a valid YouTube URL.</div>;
+                          }
+                          return (
+                            <img
+                              src={thumb}
+                              alt="YouTube thumbnail preview"
+                              className="w-full max-w-md h-48 object-cover rounded-lg"
+                              loading="lazy"
+                            />
+                          );
+                        })()
+                      ) : (
+                        <div className="text-sm text-muted-foreground">Paste a YouTube URL to see the thumbnail.</div>
                       )}
                     </div>
                   </div>
@@ -614,44 +553,30 @@ export default function PostForm() {
                   <div>
                     <FormLabel>Preview</FormLabel>
                     <div className="mt-2">
-                      {form.getValues('video_url') ? (
+                      {videoUrl ? (
                         (() => {
-                          const url = form.getValues('video_url') as string;
-                          const embedUrl = getVideoEmbedUrl(url);
-                          const thumb = form.getValues('video_thumbnail') as string | null;
-
-                          if (embedUrl) {
-                            return (
-                              <iframe
-                                title="Video preview"
-                                src={embedUrl}
-                                className="w-full aspect-video rounded-lg"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                              />
-                            );
-                          }
+                          const embedUrl = getVideoEmbedUrl(videoUrl);
+                          if (!embedUrl) return <div className="text-sm text-muted-foreground">Invalid YouTube URL.</div>;
 
                           return (
-                            <video
-                              src={url}
-                              controls
-                              poster={thumb || undefined}
-                              className="w-full aspect-video rounded-lg bg-black"
+                            <iframe
+                              title="Video preview"
+                              src={embedUrl}
+                              className="w-full aspect-video rounded-lg"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
                             />
                           );
                         })()
                       ) : (
-                        <div className="text-sm text-muted-foreground">
-                          Set a video URL or upload an MP4.
-                        </div>
+                        <div className="text-sm text-muted-foreground">Set a YouTube video URL.</div>
                       )}
                     </div>
                   </div>
 
-                  {form.getValues('video_url') && (
+                  {videoUrl && (
                     <div className="text-sm text-muted-foreground">
-                      Detected: {extractVideoId(form.getValues('video_url') as string) ? 'YouTube/Vimeo' : 'MP4 / URL'}
+                      Detected: {extractYouTubeVideoId(videoUrl as string) ? 'YouTube' : 'Invalid'}
                     </div>
                   )}
                 </div>

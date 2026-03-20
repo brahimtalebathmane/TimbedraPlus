@@ -146,13 +146,11 @@ export default function Article() {
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
-              ) : (
-                <video
-                  src={videoUrl}
-                  controls
-                  poster={videoThumbnail ? getImagePath(videoThumbnail) : undefined}
-                  className="w-full h-full object-cover bg-black"
-                />
+              )
+              : (
+                <div className="w-full h-full bg-black flex items-center justify-center text-muted-foreground text-sm px-4">
+                  Invalid YouTube video URL
+                </div>
               )
             ) : (
               <img
