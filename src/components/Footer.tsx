@@ -12,7 +12,7 @@ import {
   Ghost,
   Music2,
 } from 'lucide-react';
-import { supabase, ContactInfo } from '@/lib/supabase';
+import { supabase, ContactInfo, Category } from '@/lib/supabase';
 import { Link } from 'react-router-dom';
 
 function toWhatsappUrl(whatsapp: string) {
@@ -31,6 +31,8 @@ export default function Footer() {
 
   const [loading, setLoading] = useState(true);
   const [row, setRow] = useState<ContactInfo | null>(null);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     const fetchRow = async () => {
@@ -53,6 +55,25 @@ export default function Footer() {
     fetchRow();
   }, []);
 
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const { data } = await supabase
+          .from('categories')
+          .select('*')
+          .order('created_at', { ascending: true })
+          .limit(8);
+        if (data) setCategories(data as Category[]);
+      } catch (err) {
+        console.error('Failed to load footer categories', err);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
   const whatsappUrl = useMemo(() => {
     if (!row?.whatsapp) return null;
     return toWhatsappUrl(row.whatsapp);
@@ -73,7 +94,18 @@ export default function Footer() {
   return (
     <footer className="border-t bg-card/30 mt-12">
       <div className="container mx-auto px-4 py-10">
-        <div className="grid md:grid-cols-3 gap-8 items-start">
+        <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-8 items-start">
+          <div className="space-y-3">
+            <Link to={`/${currentLang}`} className="flex items-center gap-3">
+              <img
+                src="https://i.postimg.cc/JzzwfmdL/LOGO-TEMDHRA.png"
+                alt={t('site_name')}
+                className="h-10 w-auto"
+              />
+            </Link>
+            <div className="text-sm text-muted-foreground">{t('site_name')}</div>
+          </div>
+
           <div className="space-y-3">
             <div className="font-bold text-lg">{t('contact')}</div>
 
@@ -92,10 +124,7 @@ export default function Footer() {
                 )}
 
                 {phone && (
-                  <a
-                    href={`tel:${phone}`}
-                    className="flex items-center gap-2 hover:text-foreground transition-colors"
-                  >
+                  <a href={`tel:${phone}`} className="flex items-center gap-2 hover:text-foreground transition-colors">
                     <Phone className="w-4 h-4" />
                     <span>{phone}</span>
                   </a>
@@ -116,7 +145,7 @@ export default function Footer() {
             )}
           </div>
 
-          <div className="space-y-3 md:col-span-2">
+          <div className="space-y-3">
             <div className="font-bold text-lg">Social</div>
 
             <div className="flex flex-wrap gap-3">
@@ -211,13 +240,41 @@ export default function Footer() {
                 </a>
               )}
             </div>
+          </div>
 
-            <div className="pt-4 text-xs text-muted-foreground flex flex-wrap items-center gap-3">
-              <span>© {new Date().getFullYear()} {t('site_name')}</span>
-              <Link to={`/${currentLang}`} className="hover:text-foreground transition-colors">
-                {t('home')}
-              </Link>
-            </div>
+          <div className="space-y-3">
+            <div className="font-bold text-lg">{t('categories')}</div>
+
+            {categoriesLoading ? (
+              <div className="text-sm text-muted-foreground">{t('loading')}</div>
+            ) : (
+              <div className="space-y-2 text-sm text-muted-foreground">
+                {categories.map((cat) => (
+                  <Link
+                    key={cat.id}
+                    to={`/${currentLang}/category/${cat.slug}`}
+                    className="block hover:text-foreground transition-colors"
+                  >
+                    {cat[`name_${currentLang}` as keyof Category] as string}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-10 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>© {new Date().getFullYear()} {t('site_name')}</span>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link to={`/${currentLang}`} className="hover:text-foreground transition-colors">
+              {t('home')}
+            </Link>
+            <Link to={`/${currentLang}/videos`} className="hover:text-foreground transition-colors">
+              {t('videos')}
+            </Link>
+            <Link to={`/${currentLang}/contact`} className="hover:text-foreground transition-colors">
+              {t('contact')}
+            </Link>
           </div>
         </div>
       </div>

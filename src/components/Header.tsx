@@ -79,7 +79,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-primary text-primary-foreground shadow-md">
+      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur border-b border-border shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link to={`/${currentLang}`} className="flex items-center gap-3">
@@ -93,13 +93,13 @@ export default function Header() {
             <nav className="hidden md:flex items-center gap-6">
               <Link
                 to={`/${currentLang}`}
-                className="hover:text-primary-foreground/80 transition-colors font-medium"
+                className="hover:text-primary transition-colors font-medium text-foreground/90"
               >
                 {t('home')}
               </Link>
 
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-1 hover:text-primary-foreground/80 transition-colors font-medium">
+                <DropdownMenuTrigger className="flex items-center gap-1 hover:text-primary transition-colors font-medium text-foreground/90">
                   {t('categories')}
                   <ChevronDown className="w-4 h-4" />
                 </DropdownMenuTrigger>
@@ -116,21 +116,21 @@ export default function Header() {
 
               <Link
                 to={`/${currentLang}/videos`}
-                className="hover:text-primary-foreground/80 transition-colors font-medium"
+                className="hover:text-primary transition-colors font-medium text-foreground/90"
               >
                 {t('videos')}
               </Link>
 
               <Link
                 to={`/${currentLang}/contact`}
-                className="hover:text-primary-foreground/80 transition-colors font-medium"
+                className="hover:text-primary transition-colors font-medium text-foreground/90"
               >
                 {t('contact')}
               </Link>
 
               <Link
                 to={`/${currentLang}/streams`}
-                className="hover:text-primary-foreground/80 transition-colors font-medium"
+                className="hover:text-primary transition-colors font-medium text-foreground/90"
               >
                 {t('streams')}
               </Link>
@@ -141,7 +141,7 @@ export default function Header() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setSearchOpen(!searchOpen)}
-                className="text-primary-foreground hover:bg-primary-foreground/10"
+                className="text-foreground/80 hover:bg-muted"
               >
                 <Search className="w-5 h-5" />
               </Button>
@@ -150,7 +150,7 @@ export default function Header() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="text-primary-foreground hover:bg-primary-foreground/10"
+                className="text-foreground/80 hover:bg-muted"
               >
                 {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </Button>
@@ -160,7 +160,7 @@ export default function Header() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-primary-foreground hover:bg-primary-foreground/10"
+                    className="text-foreground/80 hover:bg-muted"
                   >
                     <Globe className="w-5 h-5" />
                   </Button>
@@ -181,7 +181,7 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-primary-foreground hover:bg-primary-foreground/10"
+                      className="text-foreground/80 hover:bg-muted"
                     >
                       <User className="w-5 h-5" />
                     </Button>
@@ -203,7 +203,7 @@ export default function Header() {
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate(`/${currentLang}/login`)}
-                  className="text-primary-foreground hover:bg-primary-foreground/10 hidden md:inline-flex"
+                  className="text-foreground/80 hover:bg-muted hidden md:inline-flex"
                 >
                   {t('login')}
                 </Button>
@@ -213,7 +213,7 @@ export default function Header() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden text-primary-foreground hover:bg-primary-foreground/10"
+                className="md:hidden text-foreground/80 hover:bg-muted"
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
@@ -227,7 +227,7 @@ export default function Header() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="border-t border-primary-foreground/20 overflow-hidden"
+              className="border-t border-border/60 overflow-hidden"
             >
               <div className="container mx-auto px-4 py-4">
                 <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
@@ -236,7 +236,7 @@ export default function Header() {
                     placeholder={t('search')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-primary-foreground/10 text-primary-foreground placeholder:text-primary-foreground/60 border-primary-foreground/20"
+                    className="bg-muted/40 text-foreground placeholder:text-muted-foreground border-border/60"
                   />
                 </form>
               </div>
@@ -250,13 +250,13 @@ export default function Header() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="md:hidden border-t border-primary-foreground/20 overflow-hidden"
+            className="md:hidden border-t border-border/60 overflow-hidden"
             >
               <nav className="container mx-auto px-4 py-4 flex flex-col gap-3">
                 <Link
                   to={`/${currentLang}`}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="py-2 hover:text-primary-foreground/80 transition-colors font-medium"
+                  className="py-2 hover:text-primary transition-colors font-medium"
                 >
                   {t('home')}
                 </Link>
@@ -265,7 +265,7 @@ export default function Header() {
                     key={category.id}
                     to={`/${currentLang}/category/${category.slug}`}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="py-2 hover:text-primary-foreground/80 transition-colors"
+                    className="py-2 hover:text-primary transition-colors"
                   >
                     {category[`name_${currentLang}` as keyof Category] as string}
                   </Link>
@@ -273,21 +273,21 @@ export default function Header() {
                 <Link
                   to={`/${currentLang}/videos`}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="py-2 hover:text-primary-foreground/80 transition-colors font-medium"
+                  className="py-2 hover:text-primary transition-colors font-medium"
                 >
                   {t('videos')}
                 </Link>
                 <Link
                   to={`/${currentLang}/contact`}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="py-2 hover:text-primary-foreground/80 transition-colors font-medium"
+                  className="py-2 hover:text-primary transition-colors font-medium"
                 >
                   {t('contact')}
                 </Link>
                 <Link
                   to={`/${currentLang}/streams`}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="py-2 hover:text-primary-foreground/80 transition-colors font-medium"
+                  className="py-2 hover:text-primary transition-colors font-medium"
                 >
                   {t('streams')}
                 </Link>
