@@ -203,7 +203,7 @@ export async function uploadVideoWithProgress(
     });
     if (error) {
       // Log full signed-upload generation failure to help diagnose 400s.
-      console.error('Supabase createSignedUploadUrl() failed', { bucket, filePath, expiresIn, error });
+      console.warn('Supabase createSignedUploadUrl() failed', { bucket, filePath, expiresIn, error });
       throw error;
     }
 
@@ -235,7 +235,7 @@ export async function uploadVideoWithProgress(
       xhr.ontimeout = () => reject(new Error('Video upload timed out.'));
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) return resolve();
-        console.error('Signed upload PUT failed', {
+        console.warn('Signed upload PUT failed', {
           bucket,
           filePath,
           xhrStatus: xhr.status,
@@ -256,9 +256,11 @@ export async function uploadVideoWithProgress(
     const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(filePath);
     return publicData.publicUrl;
   } catch (err) {
-    console.error('Signed upload flow failed; falling back to normal upload.', err);
+    console.warn('Signed upload flow failed; falling back to normal upload.', err);
     // Fall back to the standard upload path (no progress).
-    return await uploadVideo(file, bucket);
+    const url = await uploadVideo(file, bucket);
+    opts?.onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
+    return url;
   }
 }
 
