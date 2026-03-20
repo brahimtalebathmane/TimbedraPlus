@@ -69,8 +69,12 @@ export async function uploadImage(file: File, bucket: string = 'news-images'): P
 }
 
 function getVideoMimeType(file: File): string {
+  // Some browsers can append parameters (eg `video/mp4; codecs="..."`).
+  // Supabase Storage bucket `allowed_mime_types` expects exact values, so strip everything after `;`.
   const providedType = file.type?.trim();
-  if (providedType && providedType.startsWith('video/')) return providedType;
+  if (providedType && providedType.startsWith('video/')) {
+    return providedType.split(';')[0].trim();
+  }
 
   const ext = (file.name.split('.').pop() || '').toLowerCase();
   switch (ext) {
