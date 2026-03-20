@@ -162,6 +162,10 @@ export async function uploadVideoWithProgress(
 
   const bucket = opts?.bucket ?? 'news-videos';
   const timeoutMs = opts?.timeoutMs ?? 5 * 60 * 1000; // 5 minutes
+  const expiresIn = 3600; // seconds (matches typical Supabase defaults)
+  if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
+    throw new Error(`Invalid expiresIn: ${String(expiresIn)}`);
+  }
 
   const now = new Date();
   const year = now.getFullYear();
@@ -178,9 +182,10 @@ export async function uploadVideoWithProgress(
   try {
     type SignedUploadData = { signedUrl: string; token: string; path: string } | null;
     type SignedUploadResponse = { data: SignedUploadData; error: unknown | null };
+    type SignedUploadOptions = { upsert?: boolean; expiresIn?: number };
     type StorageBucket = ReturnType<typeof supabase.storage.from>;
     type StorageWithSignedUpload = StorageBucket & {
-      createSignedUploadUrl?: (path: string) => Promise<SignedUploadResponse>;
+      createSignedUploadUrl?: (path: string, options?: SignedUploadOptions) => Promise<SignedUploadResponse>;
     };
 
     const storage = supabase.storage.from(bucket) as unknown as StorageWithSignedUpload;
@@ -188,10 +193,21 @@ export async function uploadVideoWithProgress(
       return await uploadVideo(file, bucket);
     }
 
-    const { data, error } = await storage.createSignedUploadUrl(filePath);
-    if (error) throw error;
+    // IMPORTANT:
+    // - filePath is the internal object path ONLY (no bucket name).
+    // - expiresIn is always provided and validated above.
+    const { data, error } = await storage.createSignedUploadUrl(filePath, {
+      upsert: false,
+      expiresIn,
+    });
+    if (error) {
+      // Log full signed-upload generation failure to help diagnose 400s.
+      console.error('Supabase createSignedUploadUrl() failed', { bucket, filePath, expiresIn, error });
+      throw error;
+    }
 
     const signedUrl: string | undefined = data?.signedUrl;
+    const token: string | undefined = data?.token;
     if (!signedUrl) {
       return await uploadVideo(file, bucket);
     }
@@ -200,7 +216,8 @@ export async function uploadVideoWithProgress(
       const xhr = new XMLHttpRequest();
       xhr.open('PUT', signedUrl, true);
       xhr.timeout = timeoutMs;
-      xhr.setRequestHeader('Content-Type', mimeType);
+      // storage-js includes x-upsert header for signed uploads.
+      xhr.setRequestHeader('x-upsert', 'false');
 
       xhr.upload.onprogress = (evt) => {
         if (!evt.lengthComputable) return;
@@ -216,10 +233,29 @@ export async function uploadVideoWithProgress(
       xhr.ontimeout = () => reject(new Error('Video upload timed out.'));
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) return resolve();
+        console.error('Signed upload PUT failed', {
+          bucket,
+          filePath,
+          xhrStatus: xhr.status,
+          tokenPresent: Boolean(token),
+          responseText: xhr.responseText,
+        });
         reject(new Error(`Video upload failed (${xhr.status}): ${xhr.responseText || xhr.statusText}`));
       };
 
-      xhr.send(file);
+      // storage-js uses multipart/form-data when uploading Blob/File bodies.
+      // This avoids 400 Bad Request responses from signed upload endpoints.
+      const shouldUseFormData = typeof Blob !== 'undefined' && file instanceof Blob;
+      if (shouldUseFormData) {
+        const form = new FormData();
+        form.append('cacheControl', '3600');
+        form.append('', file);
+        xhr.send(form);
+      } else {
+        // Non-Blob environments (shouldn't happen in the browser) fall back to raw bytes.
+        xhr.setRequestHeader('Content-Type', mimeType);
+        xhr.send(file);
+      }
     });
 
     // Ensure UI reaches 100%.
@@ -227,7 +263,8 @@ export async function uploadVideoWithProgress(
 
     const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(filePath);
     return publicData.publicUrl;
-  } catch {
+  } catch (err) {
+    console.error('Signed upload flow failed; falling back to normal upload.', err);
     // Fall back to the standard upload path (no progress).
     return await uploadVideo(file, bucket);
   }
