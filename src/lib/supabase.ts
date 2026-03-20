@@ -9,6 +9,39 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Content types are stored in `posts.content_type` and must match exactly.
+export const CONTENT_TYPES = [
+  'خبر',
+  'بورتريه',
+  'سياحة',
+  'فيديو',
+  'صورة',
+  'تحليل / رأي',
+  'ثقافة وفنون',
+  'رياضة منوعة',
+  'تكنولوجيا / علوم',
+  'أسلوب حياة / Lifestyle',
+  'منوعات / ترفيه',
+  'ترند / سوشيال',
+] as const;
+
+export type ContentType = (typeof CONTENT_TYPES)[number];
+
+export const VIDEO_CONTENT_TYPE: ContentType = 'فيديو';
+export const IMAGE_CONTENT_TYPES: ContentType[] = CONTENT_TYPES.filter(
+  (t) => t !== VIDEO_CONTENT_TYPE
+);
+
+// Legacy values supported for a smooth rollout during migration.
+export const LEGACY_VIDEO_CONTENT_TYPE = 'video';
+export const LEGACY_IMAGE_CONTENT_TYPES = ['news', 'portrait', 'tourism'] as const;
+export const LEGACY_CONTENT_TYPE_MAP: Record<string, ContentType> = {
+  news: 'خبر',
+  portrait: 'بورتريه',
+  tourism: 'سياحة',
+  video: 'فيديو',
+};
+
 export type Profile = {
   id: string;
   name: string;
@@ -39,7 +72,7 @@ export type Post = {
   category_id: string | null;
   author_id: string | null;
   status: 'draft' | 'published' | 'archived';
-  content_type: 'news' | 'portrait' | 'tourism' | 'video';
+  content_type: ContentType;
   is_breaking: boolean;
   search_vector: string | null;
   created_at: string;

@@ -4,7 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import { Card, CardContent } from '@/components/ui/card';
 import { Clock } from 'lucide-react';
-import { supabase, Category as CategoryType, Post } from '@/lib/supabase';
+import {
+  supabase,
+  Category as CategoryType,
+  Post,
+  IMAGE_CONTENT_TYPES,
+  LEGACY_IMAGE_CONTENT_TYPES,
+} from '@/lib/supabase';
 import { getImagePath, formatRelativeTime, truncateText } from '@/lib/helpers';
 
 export default function Category() {
@@ -35,7 +41,7 @@ export default function Category() {
           .select('*, category:categories(*), author:profiles(*)')
           .eq('status', 'published')
           .eq('category_id', cat?.id || '')
-          .in('content_type', ['news', 'portrait', 'tourism'])
+          .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES] as string[])
           .order('created_at', { ascending: false })
           .limit(24);
 

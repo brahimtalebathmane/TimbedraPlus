@@ -7,7 +7,15 @@ import { Clock, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { supabase, Post, Video } from '@/lib/supabase';
+import {
+  supabase,
+  Post,
+  Video,
+  VIDEO_CONTENT_TYPE,
+  IMAGE_CONTENT_TYPES,
+  LEGACY_VIDEO_CONTENT_TYPE,
+  LEGACY_IMAGE_CONTENT_TYPES,
+} from '@/lib/supabase';
 import { formatRelativeTime, truncateText, getImagePath } from '@/lib/helpers';
 
 type TopNewsPost = Pick<
@@ -81,7 +89,8 @@ export default function Home() {
 
     const pushUnique = (arr: TopNewsPost[]) => {
       for (const p of arr) {
-        if (p.content_type === 'video') continue; // slider expects images
+        const ct = p.content_type as unknown as string;
+        if (ct === VIDEO_CONTENT_TYPE || ct === LEGACY_VIDEO_CONTENT_TYPE) continue; // slider expects images
         if (seen.has(p.id)) continue;
         seen.add(p.id);
         merged.push(p);
@@ -102,7 +111,7 @@ export default function Home() {
       .from('posts')
       .select('*, category:categories(*), author:profiles(*)')
       .eq('status', 'published')
-      .in('content_type', ['news', 'portrait', 'tourism'])
+      .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES] as string[])
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -122,7 +131,7 @@ export default function Home() {
       .from('posts')
       .select('*, category:categories(*)')
       .eq('status', 'published')
-      .in('content_type', ['news', 'portrait', 'tourism'])
+      .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES] as string[])
       .order('created_at', { ascending: false })
       .limit(5);
 

@@ -102,7 +102,7 @@ export default function Posts() {
                   )}
                 </TableCell>
                 <TableCell>{getStatusBadge(post.status)}</TableCell>
-                <TableCell>{t(post.content_type)}</TableCell>
+                <TableCell>{post.content_type}</TableCell>
                 <TableCell>{formatDate(post.created_at, i18n.language)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

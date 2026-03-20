@@ -7,7 +7,7 @@ import { Clock, User, Share2, Facebook, Twitter, Linkedin } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { supabase, Post } from '@/lib/supabase';
+import { supabase, Post, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE } from '@/lib/supabase';
 import { formatDate, formatRelativeTime, getImagePath, getVideoEmbedUrl, truncateText } from '@/lib/helpers';
 
 export default function Article() {
@@ -83,7 +83,8 @@ export default function Article() {
 
   const title = post[`title_${currentLang}` as keyof Post] as string;
   const content = post[`content_${currentLang}` as keyof Post] as string;
-  const isVideoPost = post.content_type === 'video';
+  const isVideoPost = (post.content_type as unknown as string) === VIDEO_CONTENT_TYPE
+    || (post.content_type as unknown as string) === LEGACY_VIDEO_CONTENT_TYPE;
   const extra = post as unknown as { video_url?: string | null; video_thumbnail?: string | null };
   const videoUrl = extra.video_url;
   const videoThumbnail = extra.video_thumbnail;

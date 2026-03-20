@@ -26,7 +26,13 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import TipTapEditor from '@/components/TipTapEditor';
-import { supabase, Category } from '@/lib/supabase';
+import {
+  supabase,
+  Category,
+  CONTENT_TYPES,
+  VIDEO_CONTENT_TYPE,
+  LEGACY_CONTENT_TYPE_MAP,
+} from '@/lib/supabase';
 import {
   generateSlug,
   createSearchVector,
@@ -40,6 +46,8 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { Progress } from '@/components/ui/progress';
 import { getErrorMessage } from '@/lib/utils';
+
+const contentTypeEnum = z.enum(CONTENT_TYPES as unknown as [string, ...string[]]);
 
 const postSchema = z.object({
   title_ar: z.string().min(2),
@@ -56,7 +64,7 @@ const postSchema = z.object({
   video_thumbnail: z.string().optional().nullable(),
   category_id: z.string().uuid(),
   status: z.enum(['draft', 'published', 'archived']),
-  content_type: z.enum(['news', 'portrait', 'tourism', 'video']),
+  content_type: contentTypeEnum,
   is_breaking: z.boolean(),
 });
 
@@ -87,7 +95,7 @@ export default function PostForm() {
       video_thumbnail: null,
       category_id: '',
       status: 'draft',
-      content_type: 'news',
+      content_type: CONTENT_TYPES[0],
       is_breaking: false,
     },
   });
@@ -134,13 +142,12 @@ export default function PostForm() {
           data.status === 'draft' || data.status === 'published' || data.status === 'archived'
             ? data.status
             : 'draft';
-        const contentType =
-          data.content_type === 'news' ||
-          data.content_type === 'portrait' ||
-          data.content_type === 'tourism' ||
-          data.content_type === 'video'
-            ? data.content_type
-            : 'news';
+        const rawContentType = (data as Record<string, unknown>).content_type;
+        const contentType = (() => {
+          if (typeof rawContentType !== 'string') return CONTENT_TYPES[0];
+          if ((CONTENT_TYPES as readonly string[]).includes(rawContentType)) return rawContentType;
+          return LEGACY_CONTENT_TYPE_MAP[rawContentType] ?? CONTENT_TYPES[0];
+        })();
 
         form.reset({
           title_ar: data.title_ar,
@@ -240,7 +247,7 @@ export default function PostForm() {
 
       // Avoid referencing columns with the schema cache when they're not relevant.
       // This prevents failures if the DB is temporarily behind migrations.
-      if (postData.content_type !== 'video') {
+      if (postData.content_type !== VIDEO_CONTENT_TYPE) {
         delete postData.video_url;
         delete postData.video_thumbnail;
       }
@@ -456,10 +463,11 @@ export default function PostForm() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="news">{t('news')}</SelectItem>
-                        <SelectItem value="portrait">{t('portrait')}</SelectItem>
-                        <SelectItem value="tourism">{t('tourism')}</SelectItem>
-                        <SelectItem value="video">{t('video')}</SelectItem>
+                        {CONTENT_TYPES.map((ct) => (
+                          <SelectItem key={ct} value={ct}>
+                            {ct}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -483,7 +491,7 @@ export default function PostForm() {
                 )}
               />
 
-              {contentType !== 'video' && (
+              {contentType !== VIDEO_CONTENT_TYPE && (
                 <div>
                   <FormLabel>{t('image')}</FormLabel>
                   <div className="mt-2 space-y-4">
@@ -517,7 +525,7 @@ export default function PostForm() {
                 </div>
               )}
 
-              {contentType === 'video' && (
+              {contentType === VIDEO_CONTENT_TYPE && (
                 <div className="space-y-6">
                   <FormField
                     control={form.control}
