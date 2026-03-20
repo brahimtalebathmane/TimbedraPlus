@@ -128,10 +128,10 @@ export async function uploadVideo(file: File, bucket: string = 'news-videos'): P
   const safeExt = /^[a-z0-9]+$/.test(rawExt) ? rawExt : getExtensionFromMimeType(mimeType);
   const fileName = `${uuid}.${safeExt}`;
   const filePath = `videos/${year}/${month}/${fileName}`;
+  const fileBytes = await file.arrayBuffer();
 
   // Fallback/no-progress upload.
   // IMPORTANT: pass raw binary (ArrayBuffer) so storage-js does not use multipart/form-data.
-  const fileBytes = await file.arrayBuffer();
   const { error } = await supabase.storage.from(bucket).upload(filePath, fileBytes, {
     contentType: mimeType,
   });
@@ -177,6 +177,7 @@ export async function uploadVideoWithProgress(
   const safeExt = /^[a-z0-9]+$/.test(rawExt) ? rawExt : getExtensionFromMimeType(mimeType);
   const fileName = `${uuid}.${safeExt}`;
   const filePath = `videos/${year}/${month}/${fileName}`;
+  const fileBytes = await file.arrayBuffer();
 
   // Prefer signed upload URL so we can track upload progress.
   // If the client version doesn't support it (or it fails), fall back to supabase-js upload.
@@ -220,6 +221,7 @@ export async function uploadVideoWithProgress(
       xhr.setRequestHeader('Content-Type', mimeType);
       // Keep upsert header to match storage-js behavior.
       xhr.setRequestHeader('x-upsert', 'false');
+      xhr.setRequestHeader('cache-control', 'max-age=3600');
 
       xhr.upload.onprogress = (evt) => {
         if (!evt.lengthComputable) return;
@@ -246,8 +248,8 @@ export async function uploadVideoWithProgress(
       };
 
       // IMPORTANT: user-requested constraint: do NOT use multipart/form-data.
-      // Send raw File bytes to the signed upload URL.
-      xhr.send(file);
+      // Send raw binary bytes to the signed upload URL.
+      xhr.send(fileBytes);
     });
 
     // Ensure UI reaches 100%.
