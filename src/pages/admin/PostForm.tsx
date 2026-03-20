@@ -225,7 +225,9 @@ export default function PostForm() {
         }
 
         postData.video_url = normalizedVideoUrl;
-        postData.video_thumbnail = getYouTubeThumbnailUrl(normalizedVideoUrl);
+        // Compute thumbnails in the database (trigger) to avoid Supabase client
+        // "schema cache" failures when `video_thumbnail` is missing/outdated.
+        delete postData.video_thumbnail;
       }
 
       // Avoid referencing columns with the schema cache when they're not relevant.
