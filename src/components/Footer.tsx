@@ -254,7 +254,7 @@ export default function Footer() {
                   <Link
                     key={cat.id}
                     to={`/${currentLang}/category/${cat.slug}`}
-                    className="block hover:text-foreground transition-colors"
+                    className="block rounded-lg px-2 py-1.5 hover:text-foreground transition-colors hover:bg-muted/30"
                   >
                     <span
                       className={`inline-flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}

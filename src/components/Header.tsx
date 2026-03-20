@@ -222,6 +222,9 @@ export default function Header() {
                 size="icon"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden text-foreground/80 hover:bg-muted"
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-menu"
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
@@ -258,9 +261,11 @@ export default function Header() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-            className="md:hidden border-t border-border/60 overflow-hidden"
+              id="mobile-menu"
+              className="md:hidden border-t border-border/60 overflow-y-auto max-h-[calc(100vh-4rem)]"
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
-              <nav className="container mx-auto px-4 py-4 flex flex-col gap-3">
+              <nav className="container mx-auto px-4 py-4 flex flex-col gap-3 pb-8">
                 <Link
                   to={`/${currentLang}`}
                   onClick={() => setMobileMenuOpen(false)}

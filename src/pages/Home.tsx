@@ -406,11 +406,15 @@ export default function Home() {
                               key={i}
                               type="button"
                               onClick={() => setSlideIndex(i)}
-                              className={`h-2 w-2 rounded-full transition-colors ${
-                                i === slideIndex ? 'bg-primary' : 'bg-muted-foreground/30'
-                              }`}
+                              className="h-6 w-6 flex items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                               aria-label={`Go to slide ${i + 1}`}
-                            />
+                            >
+                              <span
+                                className={`h-2 w-2 rounded-full transition-colors ${
+                                  i === slideIndex ? 'bg-primary' : 'bg-muted-foreground/30'
+                                }`}
+                              />
+                            </button>
                           ))}
                         </div>
 
@@ -702,7 +706,7 @@ export default function Home() {
                       <div key={key} className="flex items-center justify-between gap-3">
                         <Link
                           to={`/${currentLang}/category/${cat.slug}`}
-                          className="font-bold hover:text-primary transition-colors"
+                          className="font-bold hover:text-primary transition-colors py-2 px-2 rounded-lg min-h-[40px] flex items-center"
                         >
                           <span
                             className={`inline-flex items-center gap-2 ${
@@ -715,7 +719,7 @@ export default function Home() {
                         </Link>
                         <Link
                           to={`/${currentLang}/category/${cat.slug}`}
-                          className="text-primary hover:underline text-sm"
+                          className="text-primary hover:underline text-sm py-2 px-2 rounded-lg min-h-[40px] flex items-center"
                         >
                           {t('more')}
                         </Link>
