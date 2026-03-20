@@ -21,7 +21,8 @@ export function CategoryIcon({
       className={cn(
         'inline-flex items-center justify-center rounded-full',
         'bg-primary/10 text-primary border border-primary/15',
-        'flex-shrink-0'
+        'flex-shrink-0',
+        className
       )}
       style={{ width: boxSize, height: boxSize }}
     >
