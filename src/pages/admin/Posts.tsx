@@ -27,9 +27,11 @@ import { supabase, Post } from '@/lib/supabase';
 import { formatDate } from '@/lib/helpers';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/lib/utils';
+import { CategoryIcon } from '@/components/CategoryIcon';
 
 export default function Posts() {
   const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const [posts, setPosts] = useState<Post[]>([]);
 
   useEffect(() => {
@@ -96,8 +98,14 @@ export default function Posts() {
                 </TableCell>
                 <TableCell>
                   {post.category && (
-                    <Badge variant="outline">
-                      {post.category[`name_${i18n.language}` as keyof typeof post.category] as string}
+                    <Badge
+                      variant="outline"
+                      className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}
+                    >
+                      <CategoryIcon category={post.category} boxSize={18} iconSize={11} />
+                      <span>
+                        {post.category[`name_${i18n.language}` as keyof typeof post.category] as string}
+                      </span>
                     </Badge>
                   )}
                 </TableCell>

@@ -46,6 +46,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/lib/utils';
+import { CategoryIcon } from '@/components/CategoryIcon';
 
 const contentTypeEnum = z.enum(CONTENT_TYPES as unknown as [string, ...string[]]);
 
@@ -77,10 +78,11 @@ const postSchema = z.object({
 type PostForm = z.infer<typeof postSchema>;
 
 export default function PostForm() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
+  const isRTL = i18n.language === 'ar';
   const [categories, setCategories] = useState<Category[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -398,7 +400,10 @@ export default function PostForm() {
                       <SelectContent>
                         {categories.map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name_fr} / {cat.name_ar}
+                            <span className={`inline-flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
+                              <CategoryIcon category={cat} boxSize={18} iconSize={11} />
+                              {cat.name_fr} / {cat.name_ar}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>

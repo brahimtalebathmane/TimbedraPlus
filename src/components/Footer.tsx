@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase, ContactInfo, Category } from '@/lib/supabase';
 import { Link } from 'react-router-dom';
+import { CategoryIcon } from '@/components/CategoryIcon';
 
 function toWhatsappUrl(whatsapp: string) {
   const trimmed = whatsapp.trim();
@@ -28,6 +29,7 @@ function toWhatsappUrl(whatsapp: string) {
 export default function Footer() {
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language;
+  const isRTL = currentLang === 'ar';
 
   const [loading, setLoading] = useState(true);
   const [row, setRow] = useState<ContactInfo | null>(null);
@@ -61,8 +63,7 @@ export default function Footer() {
         const { data } = await supabase
           .from('categories')
           .select('*')
-          .order('created_at', { ascending: true })
-          .limit(8);
+          .order('created_at', { ascending: true });
         if (data) setCategories(data as Category[]);
       } catch (err) {
         console.error('Failed to load footer categories', err);
@@ -255,7 +256,12 @@ export default function Footer() {
                     to={`/${currentLang}/category/${cat.slug}`}
                     className="block hover:text-foreground transition-colors"
                   >
-                    {cat[`name_${currentLang}` as keyof Category] as string}
+                    <span
+                      className={`inline-flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}
+                    >
+                      <CategoryIcon category={cat} boxSize={18} iconSize={11} />
+                      <span className="truncate">{cat[`name_${currentLang}` as keyof Category] as string}</span>
+                    </span>
                   </Link>
                 ))}
               </div>

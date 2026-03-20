@@ -92,9 +92,6 @@ export default function Dashboard() {
             <Button asChild>
               <Link to="/admin/posts/new">{t('add_post')}</Link>
             </Button>
-            <Button variant="outline" asChild>
-              <Link to="/admin/categories/new">{t('add_category')}</Link>
-            </Button>
           </div>
         </CardContent>
       </Card>

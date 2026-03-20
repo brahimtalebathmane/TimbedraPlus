@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Clock, User, Share2, Facebook, Twitter, Linkedin } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CategoryIcon } from '@/components/CategoryIcon';
 import { Button } from '@/components/ui/button';
 import { supabase, Post, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE } from '@/lib/supabase';
 import { formatDate, formatRelativeTime, getImagePath, getVideoEmbedUrl, truncateText } from '@/lib/helpers';
@@ -14,6 +15,7 @@ export default function Article() {
   const { slug } = useParams<{ slug: string }>();
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language;
+  const isRTL = currentLang === 'ar';
   const [post, setPost] = useState<Post | null>(null);
   const [related, setRelated] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,8 +115,9 @@ export default function Article() {
       <article className="container mx-auto px-4 py-12 max-w-4xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           {post.category && (
-            <Badge className="mb-4">
-              {post.category[`name_${currentLang}` as keyof typeof post.category] as string}
+            <Badge className={`mb-4 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
+              <CategoryIcon category={post.category} boxSize={18} iconSize={11} />
+              <span>{post.category[`name_${currentLang}` as keyof typeof post.category] as string}</span>
             </Badge>
           )}
 

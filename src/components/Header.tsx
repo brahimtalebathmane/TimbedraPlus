@@ -24,6 +24,7 @@ import {
 import { useTheme } from '@/components/theme-provider';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, Category } from '@/lib/supabase';
+import { CategoryIcon } from '@/components/CategoryIcon';
 
 export default function Header() {
   const { t, i18n } = useTranslation();
@@ -104,13 +105,20 @@ export default function Header() {
                   <ChevronDown className="w-4 h-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align={isRTL ? 'end' : 'start'}>
-                  {categories.map((category) => (
-                    <DropdownMenuItem key={category.id} asChild>
-                      <Link to={`/${currentLang}/category/${category.slug}`}>
-                        {category[`name_${currentLang}` as keyof Category] as string}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
+                  {categories.map((category) => {
+                    const label = category[`name_${currentLang}` as keyof Category] as string;
+                    return (
+                      <DropdownMenuItem key={category.id} asChild>
+                        <Link
+                          to={`/${currentLang}/category/${category.slug}`}
+                          className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}
+                        >
+                          <CategoryIcon category={category} boxSize={20} iconSize={12} />
+                          <span className="truncate">{label}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })}
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -265,8 +273,11 @@ export default function Header() {
                     key={category.id}
                     to={`/${currentLang}/category/${category.slug}`}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="py-2 hover:text-primary transition-colors"
+                    className={`py-2 hover:text-primary transition-colors flex items-center gap-2 ${
+                      isRTL ? 'flex-row-reverse' : 'flex-row'
+                    }`}
                   >
+                    <CategoryIcon category={category} boxSize={20} iconSize={12} />
                     {category[`name_${currentLang}` as keyof Category] as string}
                   </Link>
                 ))}

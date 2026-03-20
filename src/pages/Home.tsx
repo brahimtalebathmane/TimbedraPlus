@@ -7,6 +7,7 @@ import { Clock, TrendingUp, Music2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CategoryIcon } from '@/components/CategoryIcon';
 import {
   supabase,
   Post,
@@ -543,9 +544,14 @@ export default function Home() {
 
               <section>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold">
-                    {reportsCat ? (reportsCat[`name_${currentLang}` as keyof Category] as string) : t('latest_reports')}
-                  </h2>
+                    <h2
+                      className={`text-2xl font-bold flex items-center gap-2 ${
+                        isRTL ? 'flex-row-reverse' : 'flex-row'
+                      }`}
+                    >
+                      {reportsCat ? <CategoryIcon category={reportsCat} boxSize={20} iconSize={12} /> : null}
+                      {reportsCat ? (reportsCat[`name_${currentLang}` as keyof Category] as string) : t('latest_reports')}
+                    </h2>
                   {reportsCat ? (
                     <Link to={`/${currentLang}/category/${reportsCat.slug}`} className="text-primary hover:underline text-sm">
                       {t('more')}
@@ -590,7 +596,16 @@ export default function Home() {
 
               <section>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold">{t('infographics')}</h2>
+                  <h2
+                    className={`text-2xl font-bold flex items-center gap-2 ${
+                      isRTL ? 'flex-row-reverse' : 'flex-row'
+                    }`}
+                  >
+                    {infographicsCat ? <CategoryIcon category={infographicsCat} boxSize={20} iconSize={12} /> : null}
+                    {infographicsCat
+                      ? (infographicsCat[`name_${currentLang}` as keyof Category] as string)
+                      : t('infographics')}
+                  </h2>
                   {infographicsCat ? (
                     <Link to={`/${currentLang}/category/${infographicsCat.slug}`} className="text-primary hover:underline text-sm">
                       {t('more')}
@@ -659,7 +674,14 @@ export default function Home() {
                           to={`/${currentLang}/category/${cat.slug}`}
                           className="font-bold hover:text-primary transition-colors"
                         >
-                          {label}
+                          <span
+                            className={`inline-flex items-center gap-2 ${
+                              isRTL ? 'flex-row-reverse' : 'flex-row'
+                            }`}
+                          >
+                            <CategoryIcon category={cat} boxSize={18} iconSize={11} />
+                            {label}
+                          </span>
                         </Link>
                         <Link
                           to={`/${currentLang}/category/${cat.slug}`}
@@ -686,7 +708,14 @@ export default function Home() {
               return (
                 <section key={key}>
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-2xl md:text-3xl font-bold">{label}</h2>
+                    <h2
+                      className={`text-2xl md:text-3xl font-bold flex items-center gap-2 ${
+                        isRTL ? 'flex-row-reverse' : 'flex-row'
+                      }`}
+                    >
+                      <CategoryIcon category={cat} boxSize={20} iconSize={12} />
+                      {label}
+                    </h2>
                     <Link
                       to={`/${currentLang}/category/${cat.slug}`}
                       className="text-primary hover:underline"

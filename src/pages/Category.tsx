@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import { Card, CardContent } from '@/components/ui/card';
 import { Clock } from 'lucide-react';
+import { CategoryIcon } from '@/components/CategoryIcon';
 import {
   supabase,
   Category as CategoryType,
@@ -16,6 +17,7 @@ import { getImagePath, formatRelativeTime, truncateText } from '@/lib/helpers';
 export default function Category() {
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language;
+  const isRTL = currentLang === 'ar';
   const { slug } = useParams<{ slug: string }>();
 
   const [category, setCategory] = useState<CategoryType | null>(null);
@@ -67,7 +69,14 @@ export default function Category() {
       </Helmet>
 
       <div className="container mx-auto px-4 py-12">
-        <h1 className="text-3xl font-bold mb-8 text-center">{categoryTitle || t('categories')}</h1>
+        <h1
+          className={`text-3xl font-bold mb-8 text-center flex items-center justify-center gap-2 ${
+            isRTL ? 'flex-row-reverse' : 'flex-row'
+          }`}
+        >
+          {category ? <CategoryIcon category={category} boxSize={22} iconSize={12} /> : null}
+          {categoryTitle || t('categories')}
+        </h1>
 
         {loading ? (
           <div className="grid md:grid-cols-2 gap-6">
@@ -96,7 +105,15 @@ export default function Category() {
 
                   {categoryTitle && (
                     <div className="absolute top-4 right-4 md:top-6 md:right-6">
-                      <span className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-bold shadow">
+                      <span className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-bold shadow inline-flex items-center gap-2">
+                        {category ? (
+                          <CategoryIcon
+                            category={category}
+                            boxSize={18}
+                            iconSize={11}
+                            className="bg-transparent border-transparent text-primary-foreground"
+                          />
+                        ) : null}
                         {categoryTitle}
                       </span>
                     </div>

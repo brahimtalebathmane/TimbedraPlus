@@ -7,6 +7,7 @@ import { Clock, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { CategoryIcon } from '@/components/CategoryIcon';
 import { supabase, Post } from '@/lib/supabase';
 import { formatRelativeTime, truncateText, getImagePath } from '@/lib/helpers';
 
@@ -14,6 +15,7 @@ export default function Search() {
   const [searchParams] = useSearchParams();
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language;
+  const isRTL = currentLang === 'ar';
   const query = searchParams.get('q') || '';
   const [results, setResults] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
@@ -106,8 +108,12 @@ export default function Search() {
                     </div>
                     <CardContent className="p-4">
                       {post.category && (
-                        <Badge variant="secondary" className="mb-2">
-                          {post.category[`name_${currentLang}` as keyof typeof post.category] as string}
+                        <Badge
+                          variant="secondary"
+                          className={`mb-2 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}
+                        >
+                          <CategoryIcon category={post.category} boxSize={18} iconSize={11} />
+                          <span>{post.category[`name_${currentLang}` as keyof typeof post.category] as string}</span>
                         </Badge>
                       )}
                       <h3 className="text-xl font-bold mb-2 line-clamp-2">
