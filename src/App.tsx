@@ -25,6 +25,7 @@ const StreamsAdmin = lazy(() => import('./pages/admin/Streams'));
 const ContactSettingsAdmin = lazy(() => import('./pages/admin/ContactSettings'));
 const CommentsAdmin = lazy(() => import('./pages/admin/Comments'));
 const UsersAdmin = lazy(() => import('./pages/admin/Users'));
+const MediaLibrary = lazy(() => import('./pages/admin/MediaLibrary'));
 
 function LoadingFallback() {
   return (
@@ -154,6 +155,7 @@ function App() {
             <Route path="posts" element={<Posts />} />
             <Route path="posts/:id" element={<PostForm />} />
             <Route path="categories" element={<Categories />} />
+            <Route path="media" element={<MediaLibrary />} />
             <Route path="videos" element={<VideosAdmin />} />
             <Route path="videos/:id" element={<VideoForm />} />
             <Route path="streams" element={<StreamsAdmin />} />
