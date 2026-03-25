@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { supabase, Post } from '@/lib/supabase';
 import { formatRelativeTime, truncateText, getPostThumbnailPath } from '@/lib/helpers';
+import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
+import { cn } from '@/lib/utils';
 
 export default function Search() {
   const [searchParams] = useSearchParams();
@@ -34,10 +36,11 @@ export default function Search() {
         .select('*, category:categories(*), author:profiles(*)')
         .eq('status', 'published')
         .ilike('search_vector', `%${query}%`)
+        .order('is_reel', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (data) setResults(data);
+      if (data) setResults(sortPostsReelsFirst(data));
     } finally {
       setLoading(false);
     }
@@ -98,7 +101,12 @@ export default function Search() {
               >
                 <Link to={`/${currentLang}/${post.slug}`}>
                   <Card className="overflow-hidden hover:shadow-lg hover:scale-105 transition-all duration-300">
-                    <div className="relative aspect-video">
+                    <div
+                      className={cn(
+                        'relative overflow-hidden',
+                        effectiveIsReel(post) ? 'aspect-[9/16] max-h-[min(420px,55vh)]' : 'aspect-video'
+                      )}
+                    >
                       <img
                         src={getPostThumbnailPath({
                           content_type: post.content_type,

@@ -7,7 +7,9 @@ import * as z from 'zod';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { extractYouTubeVideoId, getYouTubeThumbnailUrl, getVideoEmbedUrl, normalizeYouTubeUrl } from '@/lib/helpers';
+import { extractYouTubeVideoId, getYouTubeThumbnailUrl, normalizeYouTubeUrl } from '@/lib/helpers';
+import { inferIsReelFromVideoUrl } from '@/lib/videoDisplay';
+import { ResponsiveVideoPlayer } from '@/components/VideoEmbed';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -98,6 +100,7 @@ export default function VideoForm() {
         title_fr: values.title_fr,
         video_url: normalizedVideoUrl,
         thumbnail,
+        is_reel: inferIsReelFromVideoUrl(normalizedVideoUrl),
       };
 
       if (id && id !== 'new') {
@@ -117,7 +120,6 @@ export default function VideoForm() {
     }
   };
 
-  const embedUrl = form.watch('video_url') ? getVideoEmbedUrl(form.watch('video_url')) : null;
   const videoUrl = form.watch('video_url');
   const thumbnailPreview = videoUrl ? getYouTubeThumbnailUrl(videoUrl) : null;
 
@@ -214,21 +216,17 @@ export default function VideoForm() {
 
               <div>
                 <FormLabel>Preview</FormLabel>
-                <div className="mt-2 aspect-video bg-black rounded-lg overflow-hidden">
-                  {videoUrl ? (
-                    embedUrl ? (
-                      <iframe
-                        title="Video preview"
-                        src={embedUrl}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    ) : (
-                      <div className="p-4 text-sm text-muted-foreground">Invalid YouTube URL.</div>
-                    )
+                <div className="mt-2">
+                  {videoUrl && extractYouTubeVideoId(videoUrl) ? (
+                    <ResponsiveVideoPlayer
+                      videoUrl={videoUrl}
+                      title="Video preview"
+                      reel={{ video_url: videoUrl, is_reel: inferIsReelFromVideoUrl(videoUrl) }}
+                    />
+                  ) : videoUrl ? (
+                    <div className="p-4 text-sm text-muted-foreground rounded-lg border">Invalid YouTube URL.</div>
                   ) : (
-                    <div className="p-4 text-sm text-muted-foreground">Set a YouTube video URL.</div>
+                    <div className="p-4 text-sm text-muted-foreground rounded-lg border">Set a YouTube video URL.</div>
                   )}
                 </div>
               </div>

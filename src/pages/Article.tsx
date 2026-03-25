@@ -9,7 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { Button } from '@/components/ui/button';
 import { supabase, Post, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE, Comment } from '@/lib/supabase';
-import { formatDate, formatRelativeTime, getPostThumbnailPath, getVideoEmbedUrl, truncateText } from '@/lib/helpers';
+import { formatDate, formatRelativeTime, getPostThumbnailPath, truncateText } from '@/lib/helpers';
+import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
+import { ResponsiveVideoPlayer } from '@/components/VideoEmbed';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
@@ -81,10 +84,11 @@ export default function Article() {
       .eq('category_id', categoryId)
       .eq('status', 'published')
       .neq('id', postId)
+      .order('is_reel', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(3);
+      .limit(8);
 
-    if (data) setRelated(data);
+    if (data) setRelated(sortPostsReelsFirst(data).slice(0, 3));
   };
 
   useEffect(() => {
@@ -118,10 +122,21 @@ export default function Article() {
   const content = post[`content_${currentLang}` as keyof Post] as string;
   const isVideoPost = (post.content_type as unknown as string) === VIDEO_CONTENT_TYPE
     || (post.content_type as unknown as string) === LEGACY_VIDEO_CONTENT_TYPE;
-  const extra = post as unknown as { video_url?: string | null; video_thumbnail?: string | null };
+  const extra = post as unknown as {
+    video_url?: string | null;
+    video_thumbnail?: string | null;
+    is_reel?: boolean | null;
+    video_width?: number | null;
+    video_height?: number | null;
+  };
   const videoUrl = extra.video_url;
   const videoThumbnail = extra.video_thumbnail;
-  const videoEmbedUrl = videoUrl ? getVideoEmbedUrl(videoUrl) : null;
+  const reelMeta = {
+    video_url: videoUrl,
+    is_reel: extra.is_reel,
+    video_width: extra.video_width,
+    video_height: extra.video_height,
+  };
 
   return (
     <>
@@ -183,33 +198,22 @@ export default function Article() {
             </div>
           </div>
 
-          <div className="relative aspect-video mb-8 rounded-lg overflow-hidden">
+          <div className="mb-8">
             {isVideoPost && videoUrl ? (
-              videoEmbedUrl ? (
-                <iframe
-                  title={title}
-                  src={videoEmbedUrl}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              )
-              : (
-                <div className="w-full h-full bg-black flex items-center justify-center text-muted-foreground text-sm px-4">
-                  Invalid YouTube video URL
-                </div>
-              )
+              <ResponsiveVideoPlayer videoUrl={videoUrl} title={title} reel={reelMeta} className="rounded-lg" />
             ) : (
-              <img
-                src={getPostThumbnailPath({
-                  content_type: post.content_type,
-                  image_url: post.image_url,
-                  video_url: videoUrl,
-                  video_thumbnail: videoThumbnail,
-                })}
-                alt={title}
-                className="w-full h-full object-cover"
-              />
+              <div className="relative aspect-video rounded-lg overflow-hidden">
+                <img
+                  src={getPostThumbnailPath({
+                    content_type: post.content_type,
+                    image_url: post.image_url,
+                    video_url: videoUrl,
+                    video_thumbnail: videoThumbnail,
+                  })}
+                  alt={title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             )}
           </div>
 
@@ -270,7 +274,12 @@ export default function Article() {
                 {related.map((relatedPost) => (
                   <Link key={relatedPost.id} to={`/${currentLang}/${relatedPost.slug}`}>
                     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                      <div className="relative aspect-video">
+                      <div
+                        className={cn(
+                          'relative overflow-hidden',
+                          effectiveIsReel(relatedPost) ? 'aspect-[9/16] max-h-[280px]' : 'aspect-video'
+                        )}
+                      >
                         <img
                           src={getPostThumbnailPath({
                             content_type: relatedPost.content_type,

@@ -39,10 +39,15 @@ import {
   uploadImage,
   validateTipTapContent,
   extractYouTubeVideoId,
-  getVideoEmbedUrl,
   getYouTubeThumbnailUrl,
   normalizeYouTubeUrl,
 } from '@/lib/helpers';
+import {
+  canPlayVideoUrl,
+  inferIsReelFromVideoUrl,
+  isDirectVideoUrl,
+} from '@/lib/videoDisplay';
+import { ResponsiveVideoPlayer } from '@/components/VideoEmbed';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/lib/utils';
@@ -65,8 +70,8 @@ const postSchema = z.object({
     .string()
     .optional()
     .nullable()
-    .refine((val) => val == null || !!extractYouTubeVideoId(val), {
-      message: 'Invalid YouTube URL',
+    .refine((val) => val == null || val === '' || canPlayVideoUrl(val), {
+      message: 'Invalid video URL',
     }),
   video_thumbnail: z.string().optional().nullable(),
   category_id: z.string().uuid(),
@@ -217,17 +222,25 @@ export default function PostForm() {
 
       if (postData.content_type === VIDEO_CONTENT_TYPE) {
         const rawVideoUrl = postData.video_url;
-        const normalizedVideoUrl = typeof rawVideoUrl === 'string' ? normalizeYouTubeUrl(rawVideoUrl) : null;
-        const videoId = typeof rawVideoUrl === 'string' ? extractYouTubeVideoId(rawVideoUrl) : null;
-
-        if (!normalizedVideoUrl || !videoId) {
-          throw new Error('Invalid YouTube video URL');
+        if (typeof rawVideoUrl !== 'string' || !String(rawVideoUrl).trim()) {
+          throw new Error('Video URL is required');
         }
-
-        postData.video_url = normalizedVideoUrl;
-        // Compute thumbnails in the database (trigger) to avoid Supabase client
-        // "schema cache" failures when `video_thumbnail` is missing/outdated.
-        delete postData.video_thumbnail;
+        const trimmed = String(rawVideoUrl).trim();
+        if (extractYouTubeVideoId(trimmed)) {
+          const normalizedVideoUrl = normalizeYouTubeUrl(trimmed);
+          if (!normalizedVideoUrl) throw new Error('Invalid YouTube video URL');
+          postData.video_url = normalizedVideoUrl;
+          postData.is_reel = inferIsReelFromVideoUrl(normalizedVideoUrl);
+          delete postData.video_thumbnail;
+        } else if (isDirectVideoUrl(trimmed)) {
+          postData.video_url = trimmed;
+          postData.is_reel = false;
+          postData.video_width = null;
+          postData.video_height = null;
+          delete postData.video_thumbnail;
+        } else {
+          throw new Error('Invalid video URL');
+        }
       }
 
       // Avoid referencing columns with the schema cache when they're not relevant.
@@ -235,6 +248,9 @@ export default function PostForm() {
       if (postData.content_type !== VIDEO_CONTENT_TYPE) {
         delete postData.video_url;
         delete postData.video_thumbnail;
+        delete postData.is_reel;
+        delete postData.video_width;
+        delete postData.video_height;
       }
 
       // If user didn't provide a thumbnail/video, omit it entirely.
@@ -539,20 +555,30 @@ export default function PostForm() {
                       {videoUrl ? (
                         (() => {
                           const thumb = getYouTubeThumbnailUrl(videoUrl);
-                          if (!thumb) {
-                            return <div className="text-sm text-muted-foreground">Paste a valid YouTube URL.</div>;
+                          if (thumb) {
+                            return (
+                              <img
+                                src={thumb}
+                                alt="Video thumbnail preview"
+                                className="w-full max-w-md h-48 object-cover rounded-lg"
+                                loading="lazy"
+                              />
+                            );
                           }
-                          return (
-                            <img
-                              src={thumb}
-                              alt="YouTube thumbnail preview"
-                              className="w-full max-w-md h-48 object-cover rounded-lg"
-                              loading="lazy"
-                            />
-                          );
+                          if (isDirectVideoUrl(videoUrl)) {
+                            return (
+                              <video
+                                src={videoUrl}
+                                className="w-full max-w-md h-48 object-cover rounded-lg bg-black"
+                                muted
+                                preload="metadata"
+                              />
+                            );
+                          }
+                          return <div className="text-sm text-muted-foreground">Paste a valid video URL.</div>;
                         })()
                       ) : (
-                        <div className="text-sm text-muted-foreground">Paste a YouTube URL to see the thumbnail.</div>
+                        <div className="text-sm text-muted-foreground">Paste a video URL to see the thumbnail.</div>
                       )}
                     </div>
                   </div>
@@ -560,30 +586,33 @@ export default function PostForm() {
                   <div>
                     <FormLabel>Preview</FormLabel>
                     <div className="mt-2">
-                      {videoUrl ? (
-                        (() => {
-                          const embedUrl = getVideoEmbedUrl(videoUrl);
-                          if (!embedUrl) return <div className="text-sm text-muted-foreground">Invalid YouTube URL.</div>;
-
-                          return (
-                            <iframe
-                              title="Video preview"
-                              src={embedUrl}
-                              className="w-full aspect-video rounded-lg"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                            />
-                          );
-                        })()
+                      {videoUrl && canPlayVideoUrl(videoUrl) ? (
+                        <ResponsiveVideoPlayer
+                          videoUrl={videoUrl}
+                          title="Video preview"
+                          reel={{
+                            video_url: videoUrl,
+                            is_reel: inferIsReelFromVideoUrl(videoUrl),
+                          }}
+                        />
+                      ) : videoUrl ? (
+                        <div className="text-sm text-muted-foreground">Invalid video URL.</div>
                       ) : (
-                        <div className="text-sm text-muted-foreground">Set a YouTube video URL.</div>
+                        <div className="text-sm text-muted-foreground">Set a video URL.</div>
                       )}
                     </div>
                   </div>
 
                   {videoUrl && (
                     <div className="text-sm text-muted-foreground">
-                      Detected: {extractYouTubeVideoId(videoUrl as string) ? 'YouTube' : 'Invalid'}
+                      Detected:{' '}
+                      {extractYouTubeVideoId(videoUrl as string)
+                        ? inferIsReelFromVideoUrl(videoUrl as string)
+                          ? 'YouTube Shorts (reel)'
+                          : 'YouTube'
+                        : isDirectVideoUrl(videoUrl as string)
+                          ? 'Direct file'
+                          : 'Invalid'}
                     </div>
                   )}
                 </div>

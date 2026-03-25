@@ -4,29 +4,9 @@ import { Helmet } from 'react-helmet-async';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase, Video } from '@/lib/supabase';
-import { getVideoEmbedUrl, formatRelativeTime } from '@/lib/helpers';
-
-function VideoPlayer({ videoUrl, title }: { videoUrl: string; title: string }) {
-  const embedUrl = getVideoEmbedUrl(videoUrl);
-
-  if (embedUrl) {
-    return (
-      <iframe
-        title={title}
-        src={embedUrl}
-        className="w-full h-full"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-      />
-    );
-  }
-
-  return (
-    <div className="w-full h-full bg-black flex items-center justify-center text-muted-foreground text-sm px-4">
-      Invalid YouTube video URL
-    </div>
-  );
-}
+import { formatRelativeTime } from '@/lib/helpers';
+import { effectiveIsReel } from '@/lib/videoDisplay';
+import { ResponsiveVideoPlayer } from '@/components/VideoEmbed';
 
 export default function Videos() {
   const { t, i18n } = useTranslation();
@@ -48,6 +28,7 @@ export default function Videos() {
         const { data } = await supabase
           .from('videos')
           .select('*')
+          .order('is_reel', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(30);
 
@@ -84,19 +65,30 @@ export default function Videos() {
             {t('no_results')}
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-8">
             {videos.map((video) => {
               const titleKey = titles[currentLang === 'fr' ? 'fr' : 'ar'];
               const title = video[titleKey] as string;
+              const reel = effectiveIsReel(video);
               return (
-                <Card key={video.id} className="overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="aspect-video bg-black">
-                      <VideoPlayer videoUrl={video.video_url} title={title} />
+                <Card key={video.id} className="overflow-hidden flex flex-col">
+                  <CardContent className="p-0 flex flex-col flex-1">
+                    <div className={reel ? 'px-4 pt-4 flex justify-center' : ''}>
+                      <ResponsiveVideoPlayer
+                        videoUrl={video.video_url}
+                        title={title}
+                        reel={video}
+                        className={reel ? 'rounded-xl' : ''}
+                      />
                     </div>
                     <div className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <Badge variant="secondary">{t('videos')}</Badge>
+                        {reel ? (
+                          <Badge variant="outline" className="border-primary/50 text-primary">
+                            {t('reel')}
+                          </Badge>
+                        ) : null}
                       </div>
                       <div className="font-bold text-lg line-clamp-2">{title}</div>
                       <div className="text-sm text-muted-foreground mt-2">

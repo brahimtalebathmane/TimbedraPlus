@@ -15,6 +15,8 @@ import {
   LEGACY_VIDEO_CONTENT_TYPE,
 } from '@/lib/supabase';
 import { getPostThumbnailPath, formatRelativeTime, truncateText } from '@/lib/helpers';
+import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
+import { cn } from '@/lib/utils';
 
 export default function Category() {
   const { t, i18n } = useTranslation();
@@ -46,10 +48,11 @@ export default function Category() {
           .eq('status', 'published')
           .eq('category_id', cat?.id || '')
           .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE] as string[])
+          .order('is_reel', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(24);
 
-        if (data) setPosts(data);
+        if (data) setPosts(sortPostsReelsFirst(data));
       } finally {
         setLoading(false);
       }
@@ -98,17 +101,26 @@ export default function Category() {
             {featuredPost && (
               <div className="mb-10">
                 <div className="relative overflow-hidden rounded-xl">
-                  <img
-                    src={getPostThumbnailPath({
-                      content_type: featuredPost.content_type,
-                      image_url: featuredPost.image_url,
-                      video_url: featuredPost.video_url,
-                      video_thumbnail: featuredPost.video_thumbnail,
-                    })}
-                    alt={featuredPost[`title_${currentLang}` as keyof Post] as string}
-                    className="w-full h-72 md:h-96 object-cover"
-                    loading="lazy"
-                  />
+                  <div
+                    className={cn(
+                      'relative w-full overflow-hidden',
+                      effectiveIsReel(featuredPost)
+                        ? 'aspect-[9/16] max-h-[min(85vh,720px)] max-w-lg mx-auto'
+                        : 'h-72 md:h-96'
+                    )}
+                  >
+                    <img
+                      src={getPostThumbnailPath({
+                        content_type: featuredPost.content_type,
+                        image_url: featuredPost.image_url,
+                        video_url: featuredPost.video_url,
+                        video_thumbnail: featuredPost.video_thumbnail,
+                      })}
+                      alt={featuredPost[`title_${currentLang}` as keyof Post] as string}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
 
                   {categoryTitle && (
                     <div className="absolute top-4 right-4 md:top-6 md:right-6">
@@ -155,7 +167,12 @@ export default function Category() {
               {remainingPosts.map((post) => (
                 <Link key={post.id} to={`/${currentLang}/${post.slug}`}>
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="relative aspect-video">
+                    <div
+                      className={cn(
+                        'relative overflow-hidden',
+                        effectiveIsReel(post) ? 'aspect-[9/16] max-h-[min(480px,70vh)]' : 'aspect-video'
+                      )}
+                    >
                       <img
                     src={getPostThumbnailPath({
                       content_type: post.content_type,

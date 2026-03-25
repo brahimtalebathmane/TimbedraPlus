@@ -93,6 +93,9 @@ export type Post = {
   image_url: string | null;
   video_url?: string | null;
   video_thumbnail?: string | null;
+  is_reel?: boolean | null;
+  video_width?: number | null;
+  video_height?: number | null;
   category_id: string | null;
   author_id: string | null;
   status: 'draft' | 'published' | 'archived';
@@ -112,6 +115,9 @@ export type Video = {
   video_url: string;
   thumbnail: string | null;
   created_at: string;
+  is_reel?: boolean | null;
+  video_width?: number | null;
+  video_height?: number | null;
 };
 
 export type Message = {

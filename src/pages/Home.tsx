@@ -19,6 +19,8 @@ import {
   LEGACY_VIDEO_CONTENT_TYPE,
 } from '@/lib/supabase';
 import { formatRelativeTime, truncateText, getYouTubeThumbnailUrl, getPostThumbnailPath } from '@/lib/helpers';
+import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
+import { cn } from '@/lib/utils';
 
 type TopNewsPost = Pick<
   Post,
@@ -161,15 +163,16 @@ export default function Home() {
       .select('*, category:categories(*), author:profiles(*)')
       .eq('status', 'published')
       .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE] as string[])
+      .order('is_reel', { ascending: false })
       .order('created_at', { ascending: false })
       .range(from, to);
 
     if (data) {
-      const visible = data.slice(0, 6);
+      const visible = sortPostsReelsFirst(data.slice(0, 6));
       if (page === 1) {
         setLatest(visible);
       } else {
-        setLatest((prev) => [...prev, ...visible]);
+        setLatest((prev) => sortPostsReelsFirst([...prev, ...visible]));
       }
       setHasMore(data.length > 6);
     }
@@ -181,16 +184,18 @@ export default function Home() {
       .select('*, category:categories(*)')
       .eq('status', 'published')
       .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE] as string[])
+      .order('is_reel', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(5);
 
-    if (data) setTrending(data);
+    if (data) setTrending(sortPostsReelsFirst(data));
   };
 
   const fetchVideos = async () => {
     const { data } = await supabase
       .from('videos')
       .select('*')
+      .order('is_reel', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(3);
 
@@ -247,14 +252,15 @@ export default function Home() {
           supabase
             .from('posts')
             .select(
-              'id, title_ar, title_fr, content_ar, content_fr, slug, image_url, video_url, video_thumbnail, category_id, created_at, content_type, is_breaking',
+              'id, title_ar, title_fr, content_ar, content_fr, slug, image_url, video_url, video_thumbnail, category_id, created_at, content_type, is_breaking, is_reel, video_width, video_height',
             )
             .eq('status', 'published')
             .eq('category_id', cat.id)
               .in('content_type', POST_DISPLAY_TYPES as string[])
+            .order('is_reel', { ascending: false })
             .order('created_at', { ascending: false })
             .limit(4)
-            .then(({ data }) => [def.key, (data as Post[]) ?? []] as [HomeSectionKey, Post[]]),
+            .then(({ data }) => [def.key, sortPostsReelsFirst((data as Post[]) ?? [])] as [HomeSectionKey, Post[]]),
         );
       }
 
@@ -478,7 +484,12 @@ export default function Home() {
                   >
                     <Link to={`/${currentLang}/${post.slug}`}>
                       <Card className="overflow-hidden hover:shadow-lg hover:scale-105 transition-all duration-300">
-                        <div className="relative aspect-video">
+                        <div
+                          className={cn(
+                            'relative overflow-hidden',
+                            effectiveIsReel(post) ? 'aspect-[9/16] max-h-[min(520px,70vh)]' : 'aspect-video'
+                          )}
+                        >
                           <img
                             src={getPostThumbnailPath({
                               content_type: post.content_type,
@@ -536,7 +547,12 @@ export default function Home() {
                             isRTL ? 'flex-row-reverse' : 'flex-row'
                           } items-start hover:bg-muted/30 rounded-lg p-2 transition-colors`}
                         >
-                          <div className="relative w-20 h-14 rounded-md overflow-hidden flex-shrink-0">
+                          <div
+                            className={cn(
+                              'relative rounded-md overflow-hidden flex-shrink-0',
+                              effectiveIsReel(video) ? 'w-12 h-[4.75rem]' : 'w-20 h-14'
+                            )}
+                          >
                                 {(() => {
                                   const fallback = 'https://images.pexels.com/photos/3944454/pexels-photo-3944454.jpeg';
                                   const thumb = getYouTubeThumbnailUrl(video.video_url) || video.thumbnail || fallback;
@@ -592,7 +608,12 @@ export default function Home() {
                             isRTL ? 'flex-row-reverse' : 'flex-row'
                           } items-start hover:bg-muted/30 rounded-lg p-2 transition-colors`}
                         >
-                          <div className="relative w-20 h-14 rounded-md overflow-hidden flex-shrink-0">
+                          <div
+                            className={cn(
+                              'relative rounded-md overflow-hidden flex-shrink-0',
+                              effectiveIsReel(post) ? 'w-12 h-[4.75rem]' : 'w-20 h-14'
+                            )}
+                          >
                             <img
                               src={getPostThumbnailPath({
                                 content_type: post.content_type,
@@ -762,7 +783,12 @@ export default function Home() {
                     {posts.slice(0, 6).map((post) => (
                       <Link key={post.id} to={`/${currentLang}/${post.slug}`}>
                         <div className="rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-card">
-                          <div className="relative aspect-video">
+                          <div
+                            className={cn(
+                              'relative overflow-hidden',
+                              effectiveIsReel(post) ? 'aspect-[9/16] max-h-[320px]' : 'aspect-video'
+                            )}
+                          >
                             <img
                               src={getPostThumbnailPath({
                                 content_type: post.content_type,

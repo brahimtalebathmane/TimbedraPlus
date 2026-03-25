@@ -26,6 +26,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { effectiveIsReel } from '@/lib/videoDisplay';
 
 export default function VideosAdmin() {
   const { t } = useTranslation();
@@ -40,6 +42,7 @@ export default function VideosAdmin() {
     const { data } = await supabase
       .from('videos')
       .select('*')
+      .order('is_reel', { ascending: false })
       .order('created_at', { ascending: false });
     if (data) setVideos(data);
   };
@@ -75,6 +78,7 @@ export default function VideosAdmin() {
                 <TableHead>{t('title_ar')}</TableHead>
                 <TableHead>{t('title_fr')}</TableHead>
                 <TableHead>Video URL</TableHead>
+                <TableHead>{t('reel')}</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -86,6 +90,15 @@ export default function VideosAdmin() {
                   </TableCell>
                   <TableCell className="max-w-xs truncate">{video.title_fr}</TableCell>
                   <TableCell className="max-w-xs truncate">{video.video_url}</TableCell>
+                  <TableCell>
+                    {effectiveIsReel(video) ? (
+                      <Badge variant="outline" className="border-primary/50 text-primary">
+                        {t('reel')}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="ghost" size="icon" asChild>
