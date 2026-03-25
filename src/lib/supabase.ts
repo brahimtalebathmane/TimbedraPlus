@@ -47,7 +47,6 @@ export type Profile = {
   name: string;
   email: string;
   avatar: string | null;
-  avatar_url?: string | null;
   role: 'user' | 'admin';
   created_at: string;
 };
@@ -65,13 +64,11 @@ export type Comment = {
         id: string;
         name: string;
         avatar: string | null;
-        avatar_url?: string | null;
       }
     | Array<{
         id: string;
         name: string;
         avatar: string | null;
-        avatar_url?: string | null;
       }>;
 };
 

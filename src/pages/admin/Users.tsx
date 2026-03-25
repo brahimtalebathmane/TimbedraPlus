@@ -24,7 +24,7 @@ export default function UsersAdmin() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, email, role, created_at, avatar, avatar_url')
+        .select('id, name, email, role, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

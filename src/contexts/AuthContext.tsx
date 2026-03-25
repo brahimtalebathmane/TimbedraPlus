@@ -7,12 +7,7 @@ type AuthContextType = {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (
-    email: string,
-    password: string,
-    name: string,
-    avatarFile?: File | null
-  ) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
 };
@@ -71,34 +66,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string, name: string, avatarFile?: File | null) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
-
-    if (!data.user) return;
-
-    const session = data.session ?? (await supabase.auth.getSession()).data.session;
-
-    let avatarUrl: string | null = null;
-    if (avatarFile && session) {
-      try {
-        const { uploadAvatar } = await import('@/lib/helpers');
-        avatarUrl = await uploadAvatar(avatarFile, data.user.id);
-      } catch (uploadError) {
-        // Keep registration reliable even if Storage/bucket/policies aren't ready.
-        console.error('Avatar upload failed, continuing without avatar:', uploadError);
-        avatarUrl = null;
-      }
-    }
-
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: data.user.id,
-      name,
+  const signUp = async (email: string, password: string, name: string) => {
+    // Store name in user_metadata so a DB trigger can auto-create `profiles` on `auth.users` insert.
+    const { error } = await supabase.auth.signUp({
       email,
-      role: 'user',
-      avatar_url: avatarUrl,
+      password,
+      options: {
+        data: { name },
+      },
     });
-    if (profileError) throw profileError;
+
+    if (error) throw error;
   };
 
   const signOut = async () => {

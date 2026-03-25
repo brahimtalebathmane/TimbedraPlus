@@ -68,28 +68,6 @@ export async function uploadImage(file: File, bucket: string = 'news-images'): P
   return data.publicUrl;
 }
 
-/** Upload a profile avatar to the `avatars` bucket. Path: `{userId}/{uuid}.{ext}` (must match Storage RLS). */
-export async function uploadAvatar(file: File, userId: string): Promise<string> {
-  const { supabase } = await import('./supabase');
-
-  const compressedFile = await compressImage(file);
-
-  const uuid = crypto.randomUUID();
-  const fileExt = (file.name.split('.').pop() || '').toLowerCase() || 'png';
-  const fileName = `${uuid}.${fileExt}`;
-  const filePath = `${userId}/${fileName}`;
-
-  const { error } = await supabase.storage.from('avatars').upload(filePath, compressedFile, {
-    upsert: true,
-    cacheControl: '3600',
-  });
-
-  if (error) throw error;
-
-  const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-  return data.publicUrl;
-}
-
 function getVideoMimeType(file: File): string {
   // Some browsers can append parameters (eg `video/mp4; codecs="..."`).
   // Supabase Storage bucket `allowed_mime_types` expects exact values, so strip everything after `;`.

@@ -14,7 +14,7 @@ import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
 import { ResponsiveVideoPlayer } from '@/components/VideoEmbed';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/lib/utils';
@@ -64,7 +64,7 @@ export default function Article() {
     try {
       const { data, error } = await supabase
         .from('comments')
-        .select('id, post_id, user_id, content, created_at, user:profiles(id, name, avatar_url, avatar)')
+        .select('id, post_id, user_id, content, created_at, user:profiles(id, name)')
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
@@ -373,12 +373,10 @@ export default function Article() {
               <div className="space-y-4">
                 {comments.map((c) => {
                   const author = Array.isArray(c.user) ? c.user[0] : c.user;
-                  const avatar = author?.avatar_url ?? author?.avatar ?? null;
                   const initials = (author?.name ?? '?').trim().slice(0, 1);
                   return (
                     <div key={c.id} className="flex items-start gap-3">
                       <Avatar className="h-10 w-10">
-                        {avatar ? <AvatarImage src={avatar} alt={author?.name ?? 'User'} /> : null}
                         <AvatarFallback>{initials}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">

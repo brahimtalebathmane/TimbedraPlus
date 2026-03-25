@@ -38,7 +38,7 @@ export default function CommentsAdmin() {
     try {
       const { data, error } = await supabase
         .from('comments')
-        .select('id, post_id, user_id, content, created_at, user:profiles(id, name, avatar_url, avatar)')
+        .select('id, post_id, user_id, content, created_at, user:profiles(id, name)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
