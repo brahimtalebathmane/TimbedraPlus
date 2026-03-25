@@ -47,8 +47,32 @@ export type Profile = {
   name: string;
   email: string;
   avatar: string | null;
+  avatar_url?: string | null;
   role: 'user' | 'admin';
   created_at: string;
+};
+
+export type Comment = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  // Supabase relationship joins can come back as either a single object or an array
+  // depending on how PostgREST infers the relationship shape.
+  user?:
+    | {
+        id: string;
+        name: string;
+        avatar: string | null;
+        avatar_url?: string | null;
+      }
+    | Array<{
+        id: string;
+        name: string;
+        avatar: string | null;
+        avatar_url?: string | null;
+      }>;
 };
 
 export type Category = {

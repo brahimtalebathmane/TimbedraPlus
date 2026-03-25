@@ -3,22 +3,31 @@ import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { Clock, User, Share2, Facebook, Twitter, Linkedin } from 'lucide-react';
+import { Clock, User, Share2, Facebook, Twitter, Linkedin, MessageSquareText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { Button } from '@/components/ui/button';
-import { supabase, Post, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE } from '@/lib/supabase';
+import { supabase, Post, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE, Comment } from '@/lib/supabase';
 import { formatDate, formatRelativeTime, getPostThumbnailPath, getVideoEmbedUrl, truncateText } from '@/lib/helpers';
+import { useAuth } from '@/contexts/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/utils';
 
 export default function Article() {
   const { slug } = useParams<{ slug: string }>();
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language;
   const isRTL = currentLang === 'ar';
+  const { user } = useAuth();
   const [post, setPost] = useState<Post | null>(null);
   const [related, setRelated] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentContent, setCommentContent] = useState('');
 
   useEffect(() => {
     if (slug) {
@@ -47,6 +56,24 @@ export default function Article() {
     }
   };
 
+  const fetchComments = async (postId: string) => {
+    setCommentsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .select('id, post_id, user_id, content, created_at, user:profiles(id, name, avatar_url, avatar)')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setComments((data ?? []) as Comment[]);
+    } catch (error: unknown) {
+      console.error('Error fetching comments:', error);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
   const fetchRelated = async (categoryId: string, postId: string) => {
     const { data } = await supabase
       .from('posts')
@@ -59,6 +86,10 @@ export default function Article() {
 
     if (data) setRelated(data);
   };
+
+  useEffect(() => {
+    if (post?.id) fetchComments(post.id);
+  }, [post?.id]);
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const shareTitle = post ? post[`title_${currentLang}` as keyof Post] as string : '';
@@ -267,6 +298,93 @@ export default function Article() {
               </div>
             </div>
           )}
+
+          <div className="mt-12">
+            <div className="flex items-center gap-2 mb-4">
+              <MessageSquareText className="w-5 h-5" />
+              <h2 className="text-2xl font-bold">{t('comments')}</h2>
+            </div>
+
+            {user && (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!post) return;
+                  const content = commentContent.trim();
+                  if (!content) return;
+
+                  try {
+                    const { error } = await supabase.from('comments').insert({
+                      post_id: post.id,
+                      user_id: user.id,
+                      content,
+                    });
+                    if (error) throw error;
+
+                    setCommentContent('');
+                    await fetchComments(post.id);
+                    toast.success(t('success'));
+                  } catch (error: unknown) {
+                    toast.error(getErrorMessage(error) || t('error'));
+                  }
+                }}
+                className="mb-6"
+              >
+                <div className="space-y-3">
+                  <Textarea
+                    value={commentContent}
+                    onChange={(e) => setCommentContent(e.target.value)}
+                    placeholder={t('add_comment')}
+                  />
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={commentsLoading}>
+                      {t('add_comment')}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            )}
+
+            {commentsLoading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-40 animate-pulse" />
+                      <div className="h-4 bg-muted rounded w-full animate-pulse" />
+                      <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : comments.length === 0 ? (
+              <p className="text-muted-foreground">{t('no_comments')}</p>
+            ) : (
+              <div className="space-y-4">
+                {comments.map((c) => {
+                  const author = Array.isArray(c.user) ? c.user[0] : c.user;
+                  const avatar = author?.avatar_url ?? author?.avatar ?? null;
+                  const initials = (author?.name ?? '?').trim().slice(0, 1);
+                  return (
+                    <div key={c.id} className="flex items-start gap-3">
+                      <Avatar className="h-10 w-10">
+                        {avatar ? <AvatarImage src={avatar} alt={author?.name ?? 'User'} /> : null}
+                        <AvatarFallback>{initials}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between gap-3 mb-1">
+                          <div className="font-medium text-sm">{author?.name ?? 'User'}</div>
+                          <div className="text-muted-foreground text-xs">{formatDate(c.created_at, currentLang)}</div>
+                        </div>
+                        <div className="text-sm whitespace-pre-wrap">{c.content}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </motion.div>
       </article>
     </>

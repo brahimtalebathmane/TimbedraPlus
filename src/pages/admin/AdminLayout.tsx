@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FileText, FolderOpen, Video, LayoutDashboard, Phone, Tv } from 'lucide-react';
+import { FileText, FolderOpen, Video, LayoutDashboard, Phone, Tv, MessageSquareText, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Footer from '@/components/Footer';
 
@@ -15,6 +15,8 @@ export default function AdminLayout() {
     { name: t('videos'), href: '/admin/videos', icon: Video },
     { name: t('streams'), href: '/admin/streams', icon: Tv },
     { name: t('contact'), href: '/admin/contact-settings', icon: Phone },
+    { name: t('comments'), href: '/admin/comments', icon: MessageSquareText },
+    { name: t('users'), href: '/admin/users', icon: Users },
   ];
 
   return (

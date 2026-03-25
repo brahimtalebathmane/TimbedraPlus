@@ -24,6 +24,14 @@ const registerSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(6),
+  confirmPassword: z.string().min(6),
+  avatarUrl: z.preprocess(
+    (val) => {
+      const s = typeof val === 'string' ? val.trim() : '';
+      return s ? s : undefined;
+    },
+    z.string().url().optional()
+  ),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -40,13 +48,19 @@ export default function Register() {
       name: '',
       email: '',
       password: '',
+      confirmPassword: '',
+      avatarUrl: '',
     },
   });
 
   const onSubmit = async (values: RegisterForm) => {
     setLoading(true);
     try {
-      await signUp(values.email, values.password, values.name);
+      if (values.password !== values.confirmPassword) {
+        throw new Error('Passwords do not match');
+      }
+
+      await signUp(values.email, values.password, values.name, values.avatarUrl ?? null);
       toast.success(t('success'));
       navigate(`/${i18n.language}`);
     } catch (error: unknown) {
@@ -107,6 +121,36 @@ export default function Register() {
                       <FormLabel>{t('password')}</FormLabel>
                       <FormControl>
                         <Input type="password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('confirm_password')}</FormLabel>
+                      <FormControl>
+                        <Input type="password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="avatarUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('profile_image_url_optional')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder={t('profile_image_url_optional_placeholder')}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
