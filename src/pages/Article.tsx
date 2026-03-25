@@ -286,27 +286,38 @@ export default function Article() {
             <div>
               <h2 className="text-3xl font-bold mb-6">{t('related_articles')}</h2>
               <div className="grid md:grid-cols-3 gap-6">
-                {related.map((relatedPost) => (
-                  <Link key={relatedPost.id} to={`/${currentLang}/${relatedPost.slug}`}>
+                {related.map((relatedPost) => {
+                  const relatedIsVideoPost =
+                    (relatedPost.content_type as unknown as string) === VIDEO_CONTENT_TYPE ||
+                    (relatedPost.content_type as unknown as string) === LEGACY_VIDEO_CONTENT_TYPE;
+
+                  const relatedHasMedia = relatedIsVideoPost
+                    ? !!relatedPost.video_url || !!relatedPost.video_thumbnail
+                    : !!relatedPost.image_url;
+
+                  return (
+                    <Link key={relatedPost.id} to={`/${currentLang}/${relatedPost.slug}`}>
                     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                      <div
-                        className={cn(
-                          'relative overflow-hidden',
-                          effectiveIsReel(relatedPost) ? 'aspect-[9/16] max-h-[280px]' : 'aspect-video'
-                        )}
-                      >
-                        <img
-                          src={getPostThumbnailPath({
-                            content_type: relatedPost.content_type,
-                            image_url: relatedPost.image_url,
-                            video_url: relatedPost.video_url,
-                            video_thumbnail: relatedPost.video_thumbnail,
-                          })}
-                          alt={relatedPost[`title_${currentLang}` as keyof Post] as string}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
+                      {relatedHasMedia && (
+                        <div
+                          className={cn(
+                            'relative overflow-hidden',
+                            effectiveIsReel(relatedPost) ? 'aspect-[9/16] max-h-[280px]' : 'aspect-video'
+                          )}
+                        >
+                          <img
+                            src={getPostThumbnailPath({
+                              content_type: relatedPost.content_type,
+                              image_url: relatedPost.image_url,
+                              video_url: relatedPost.video_url,
+                              video_thumbnail: relatedPost.video_thumbnail,
+                            })}
+                            alt={relatedPost[`title_${currentLang}` as keyof Post] as string}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
                       <CardContent className="p-4">
                         <h3 className="font-bold mb-2 line-clamp-2">
                           {relatedPost[`title_${currentLang}` as keyof Post] as string}
@@ -318,7 +329,8 @@ export default function Article() {
                       </CardContent>
                     </Card>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
