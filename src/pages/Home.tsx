@@ -18,7 +18,7 @@ import {
   LEGACY_IMAGE_CONTENT_TYPES,
   LEGACY_VIDEO_CONTENT_TYPE,
 } from '@/lib/supabase';
-import { formatRelativeTime, truncateText, getYouTubeThumbnailUrl, getPostThumbnailPath } from '@/lib/helpers';
+import { formatRelativeTime, truncateText, getYouTubeThumbnailUrl, getPostThumbnailUrl } from '@/lib/helpers';
 import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
 import { cn } from '@/lib/utils';
 
@@ -77,6 +77,20 @@ const SECTION_DEFS: SectionDef[] = [
   { key: 'various', keywordsAr: ['منوعات', 'ترفيه'], keywordsFr: ['Divers', 'Divertissement', 'Loisirs'] },
   { key: 'infographics', keywordsAr: ['انفوج', 'انفو', 'انفوجرافيك', 'انفوغرافيك'], keywordsFr: ['Infographique', 'Infographic', 'Infographies'] },
 ];
+
+function getPostThumbUrl(input: {
+  content_type?: string | null;
+  image_url?: string | null;
+  video_url?: string | null;
+  video_thumbnail?: string | null;
+}): string | null {
+  return getPostThumbnailUrl({
+    content_type: input.content_type ?? null,
+    image_url: input.image_url ?? null,
+    video_url: input.video_url ?? null,
+    video_thumbnail: input.video_thumbnail ?? null,
+  });
+}
 
 export default function Home() {
   const { t, i18n } = useTranslation();
@@ -309,19 +323,29 @@ export default function Home() {
                   <Link to={`/${currentLang}/${topNews[slideIndex].slug}`}>
                     <div className="overflow-hidden rounded-xl bg-card shadow-sm hover:shadow-md transition-shadow">
                       <div className="relative">
-                        <img
-                          src={getPostThumbnailPath({
+                        {(() => {
+                          const url = getPostThumbUrl({
                             content_type: topNews[slideIndex].content_type,
                             image_url: topNews[slideIndex].image_url,
                             video_url: topNews[slideIndex].video_url,
                             video_thumbnail: topNews[slideIndex].video_thumbnail,
-                          })}
-                          alt={
-                            topNews[slideIndex][`title_${currentLang}` as keyof TopNewsPost] as string
-                          }
-                          className="w-full h-[260px] md:h-[320px] object-cover"
-                          loading="lazy"
-                        />
+                          });
+
+                          const title = topNews[slideIndex][
+                            `title_${currentLang}` as keyof TopNewsPost
+                          ] as string;
+
+                          return url ? (
+                            <img
+                              src={url}
+                              alt={title}
+                              className="w-full h-[260px] md:h-[320px] object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-[260px] md:h-[320px] bg-muted" />
+                          );
+                        })()}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
                         <div className="absolute left-4 bottom-4 right-4">
                           <Badge className="w-fit mb-3">{t('breaking_news')}</Badge>
@@ -364,17 +388,23 @@ export default function Home() {
                         >
                           <div className={`flex gap-3 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
                             <div className="relative w-20 h-14 rounded-md overflow-hidden flex-shrink-0">
-                              <img
-                                src={getPostThumbnailPath({
+                              {(() => {
+                                const url = getPostThumbUrl({
                                   content_type: post.content_type,
                                   image_url: post.image_url,
                                   video_url: post.video_url,
                                   video_thumbnail: post.video_thumbnail,
-                                })}
-                                alt={post[`title_${currentLang}` as keyof TopNewsPost] as string}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                              />
+                                });
+                                if (!url) return null;
+                                return (
+                                  <img
+                                    src={url}
+                                    alt={post[`title_${currentLang}` as keyof TopNewsPost] as string}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                  />
+                                );
+                              })()}
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="font-bold text-sm line-clamp-2">
@@ -484,24 +514,33 @@ export default function Home() {
                   >
                     <Link to={`/${currentLang}/${post.slug}`}>
                       <Card className="overflow-hidden hover:shadow-lg hover:scale-105 transition-all duration-300">
-                        <div
-                          className={cn(
-                            'relative overflow-hidden',
-                            effectiveIsReel(post) ? 'aspect-[9/16] max-h-[min(520px,70vh)]' : 'aspect-video'
-                          )}
-                        >
-                          <img
-                            src={getPostThumbnailPath({
-                              content_type: post.content_type,
-                              image_url: post.image_url,
-                              video_url: post.video_url,
-                              video_thumbnail: post.video_thumbnail,
-                            })}
-                            alt={post[`title_${currentLang}` as keyof Post] as string}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        </div>
+                        {(() => {
+                          const url = getPostThumbUrl({
+                            content_type: post.content_type,
+                            image_url: post.image_url,
+                            video_url: post.video_url,
+                            video_thumbnail: post.video_thumbnail,
+                          });
+                          if (!url) return null;
+
+                          return (
+                            <div
+                              className={cn(
+                                'relative overflow-hidden',
+                                effectiveIsReel(post)
+                                  ? 'aspect-[9/16] max-h-[min(520px,70vh)]'
+                                  : 'aspect-video'
+                              )}
+                            >
+                              <img
+                                src={url}
+                                alt={post[`title_${currentLang}` as keyof Post] as string}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                          );
+                        })()}
                         <CardContent className="p-4">
                           <h3 className="text-xl font-bold mb-2 line-clamp-2 text-center">
                             {post[`title_${currentLang}` as keyof Post] as string}
@@ -614,17 +653,24 @@ export default function Home() {
                               effectiveIsReel(post) ? 'w-12 h-[4.75rem]' : 'w-20 h-14'
                             )}
                           >
-                            <img
-                              src={getPostThumbnailPath({
+                            {(() => {
+                              const url = getPostThumbUrl({
                                 content_type: post.content_type,
                                 image_url: post.image_url,
                                 video_url: post.video_url,
                                 video_thumbnail: post.video_thumbnail,
-                              })}
-                              alt={post[`title_${currentLang}` as keyof Post] as string}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
+                              });
+                              if (!url) return null;
+
+                              return (
+                                <img
+                                  src={url}
+                                  alt={post[`title_${currentLang}` as keyof Post] as string}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              );
+                            })()}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="font-bold text-sm line-clamp-2">
@@ -670,19 +716,26 @@ export default function Home() {
                     {sidebarInfographics.slice(0, 4).map((post) => (
                       <Link key={post.id} to={`/${currentLang}/${post.slug}`}>
                         <div className="rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-card">
-                          <div className="relative aspect-[4/3]">
-                            <img
-                              src={getPostThumbnailPath({
-                                content_type: post.content_type,
-                                image_url: post.image_url,
-                                video_url: post.video_url,
-                                video_thumbnail: post.video_thumbnail,
-                              })}
-                              alt={post[`title_${currentLang}` as keyof Post] as string}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          </div>
+                          {(() => {
+                            const url = getPostThumbUrl({
+                              content_type: post.content_type,
+                              image_url: post.image_url,
+                              video_url: post.video_url,
+                              video_thumbnail: post.video_thumbnail,
+                            });
+                            if (!url) return null;
+
+                            return (
+                              <div className="relative aspect-[4/3]">
+                                <img
+                                  src={url}
+                                  alt={post[`title_${currentLang}` as keyof Post] as string}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              </div>
+                            );
+                          })()}
                           <div className="p-3">
                             <div className="font-bold text-sm line-clamp-2">
                               {post[`title_${currentLang}` as keyof Post] as string}
@@ -783,24 +836,31 @@ export default function Home() {
                     {posts.slice(0, 6).map((post) => (
                       <Link key={post.id} to={`/${currentLang}/${post.slug}`}>
                         <div className="rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-card">
-                          <div
-                            className={cn(
-                              'relative overflow-hidden',
-                              effectiveIsReel(post) ? 'aspect-[9/16] max-h-[320px]' : 'aspect-video'
-                            )}
-                          >
-                            <img
-                              src={getPostThumbnailPath({
-                                content_type: post.content_type,
-                                image_url: post.image_url,
-                                video_url: post.video_url,
-                                video_thumbnail: post.video_thumbnail,
-                              })}
-                              alt={post[`title_${currentLang}` as keyof Post] as string}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          </div>
+                          {(() => {
+                            const url = getPostThumbUrl({
+                              content_type: post.content_type,
+                              image_url: post.image_url,
+                              video_url: post.video_url,
+                              video_thumbnail: post.video_thumbnail,
+                            });
+                            if (!url) return null;
+
+                            return (
+                              <div
+                                className={cn(
+                                  'relative overflow-hidden',
+                                  effectiveIsReel(post) ? 'aspect-[9/16] max-h-[320px]' : 'aspect-video'
+                                )}
+                              >
+                                <img
+                                  src={url}
+                                  alt={post[`title_${currentLang}` as keyof Post] as string}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              </div>
+                            );
+                          })()}
                           <div className="p-4">
                             <div className="font-bold text-base line-clamp-2">
                               {post[`title_${currentLang}` as keyof Post] as string}

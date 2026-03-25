@@ -14,7 +14,7 @@ import {
   VIDEO_CONTENT_TYPE,
   LEGACY_VIDEO_CONTENT_TYPE,
 } from '@/lib/supabase';
-import { getPostThumbnailPath, formatRelativeTime, truncateText } from '@/lib/helpers';
+import { getPostThumbnailUrl, formatRelativeTime, truncateText } from '@/lib/helpers';
 import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
 import { cn } from '@/lib/utils';
 
@@ -109,17 +109,24 @@ export default function Category() {
                         : 'h-72 md:h-96'
                     )}
                   >
-                    <img
-                      src={getPostThumbnailPath({
+                    {(() => {
+                      const url = getPostThumbnailUrl({
                         content_type: featuredPost.content_type,
                         image_url: featuredPost.image_url,
                         video_url: featuredPost.video_url,
                         video_thumbnail: featuredPost.video_thumbnail,
-                      })}
-                      alt={featuredPost[`title_${currentLang}` as keyof Post] as string}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
+                      });
+                      if (!url) return null;
+
+                      return (
+                        <img
+                          src={url}
+                          alt={featuredPost[`title_${currentLang}` as keyof Post] as string}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      );
+                    })()}
                   </div>
 
                   {categoryTitle && (
@@ -167,24 +174,31 @@ export default function Category() {
               {remainingPosts.map((post) => (
                 <Link key={post.id} to={`/${currentLang}/${post.slug}`}>
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <div
-                      className={cn(
-                        'relative overflow-hidden',
-                        effectiveIsReel(post) ? 'aspect-[9/16] max-h-[min(480px,70vh)]' : 'aspect-video'
-                      )}
-                    >
-                      <img
-                    src={getPostThumbnailPath({
-                      content_type: post.content_type,
-                      image_url: post.image_url,
-                      video_url: post.video_url,
-                      video_thumbnail: post.video_thumbnail,
-                    })}
-                        alt={post[`title_${currentLang}` as keyof Post] as string}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
+                    {(() => {
+                      const url = getPostThumbnailUrl({
+                        content_type: post.content_type,
+                        image_url: post.image_url,
+                        video_url: post.video_url,
+                        video_thumbnail: post.video_thumbnail,
+                      });
+                      if (!url) return null;
+
+                      return (
+                        <div
+                          className={cn(
+                            'relative overflow-hidden',
+                            effectiveIsReel(post) ? 'aspect-[9/16] max-h-[min(480px,70vh)]' : 'aspect-video'
+                          )}
+                        >
+                          <img
+                            src={url}
+                            alt={post[`title_${currentLang}` as keyof Post] as string}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      );
+                    })()}
                     <CardContent className="p-4">
                       <h3 className="text-xl font-bold mb-2 line-clamp-2 text-center">
                         {post[`title_${currentLang}` as keyof Post] as string}

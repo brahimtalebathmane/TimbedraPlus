@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { Button } from '@/components/ui/button';
 import { supabase, Post, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE, Comment } from '@/lib/supabase';
-import { formatDate, formatRelativeTime, getPostThumbnailPath, truncateText } from '@/lib/helpers';
+import { formatDate, formatRelativeTime, getPostThumbnailPath, getPostThumbnailUrl, truncateText } from '@/lib/helpers';
 import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
 import { ResponsiveVideoPlayer } from '@/components/VideoEmbed';
 import { cn } from '@/lib/utils';
@@ -287,13 +287,16 @@ export default function Article() {
               <h2 className="text-3xl font-bold mb-6">{t('related_articles')}</h2>
               <div className="grid md:grid-cols-3 gap-6">
                 {related.map((relatedPost) => {
-                  const relatedIsVideoPost =
-                    (relatedPost.content_type as unknown as string) === VIDEO_CONTENT_TYPE ||
-                    (relatedPost.content_type as unknown as string) === LEGACY_VIDEO_CONTENT_TYPE;
+                  const thumbUrl = getPostThumbnailUrl({
+                    content_type: relatedPost.content_type,
+                    image_url: relatedPost.image_url,
+                    video_url: relatedPost.video_url,
+                    video_thumbnail: relatedPost.video_thumbnail,
+                  });
 
-                  const relatedHasMedia = relatedIsVideoPost
-                    ? !!relatedPost.video_url || !!relatedPost.video_thumbnail
-                    : !!relatedPost.image_url;
+                  // Render media only when we have a real thumbnail URL.
+                  // This avoids showing the generic fallback image when the post has no media.
+                  const relatedHasMedia = !!thumbUrl;
 
                   return (
                     <Link key={relatedPost.id} to={`/${currentLang}/${relatedPost.slug}`}>
@@ -306,12 +309,7 @@ export default function Article() {
                           )}
                         >
                           <img
-                            src={getPostThumbnailPath({
-                              content_type: relatedPost.content_type,
-                              image_url: relatedPost.image_url,
-                              video_url: relatedPost.video_url,
-                              video_thumbnail: relatedPost.video_thumbnail,
-                            })}
+                            src={thumbUrl!}
                             alt={relatedPost[`title_${currentLang}` as keyof Post] as string}
                             className="w-full h-full object-cover"
                             loading="lazy"

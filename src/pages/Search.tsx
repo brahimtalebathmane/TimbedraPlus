@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { supabase, Post } from '@/lib/supabase';
-import { formatRelativeTime, truncateText, getPostThumbnailPath } from '@/lib/helpers';
+import { formatRelativeTime, truncateText, getPostThumbnailUrl } from '@/lib/helpers';
 import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
 import { cn } from '@/lib/utils';
 
@@ -101,24 +101,33 @@ export default function Search() {
               >
                 <Link to={`/${currentLang}/${post.slug}`}>
                   <Card className="overflow-hidden hover:shadow-lg hover:scale-105 transition-all duration-300">
-                    <div
-                      className={cn(
-                        'relative overflow-hidden',
-                        effectiveIsReel(post) ? 'aspect-[9/16] max-h-[min(420px,55vh)]' : 'aspect-video'
-                      )}
-                    >
-                      <img
-                        src={getPostThumbnailPath({
-                          content_type: post.content_type,
-                          image_url: post.image_url,
-                          video_url: post.video_url,
-                          video_thumbnail: post.video_thumbnail,
-                        })}
-                        alt={post[`title_${currentLang}` as keyof Post] as string}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
+                    {(() => {
+                      const url = getPostThumbnailUrl({
+                        content_type: post.content_type,
+                        image_url: post.image_url,
+                        video_url: post.video_url,
+                        video_thumbnail: post.video_thumbnail,
+                      });
+                      if (!url) return null;
+
+                      return (
+                        <div
+                          className={cn(
+                            'relative overflow-hidden',
+                            effectiveIsReel(post)
+                              ? 'aspect-[9/16] max-h-[min(420px,55vh)]'
+                              : 'aspect-video'
+                          )}
+                        >
+                          <img
+                            src={url}
+                            alt={post[`title_${currentLang}` as keyof Post] as string}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      );
+                    })()}
                     <CardContent className="p-4">
                       {post.category && (
                         <Badge
