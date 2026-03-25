@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/lib/utils';
+import AdSlot from '@/components/Ads/AdSlot';
 
 export default function Article() {
   const { slug } = useParams<{ slug: string }>();
@@ -236,6 +237,10 @@ export default function Article() {
             className="prose prose-lg dark:prose-invert max-w-none mb-8"
             dangerouslySetInnerHTML={{ __html: content }}
           />
+
+          <div className="mb-10">
+            <AdSlot placement="article" />
+          </div>
 
           <div className="border-t border-b py-6 mb-8">
             <div className="flex items-center gap-4">

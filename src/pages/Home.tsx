@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CategoryIcon } from '@/components/CategoryIcon';
+import AdSlot from '@/components/Ads/AdSlot';
 import {
   supabase,
   Post,
@@ -312,6 +313,8 @@ export default function Home() {
         </Helmet>
 
         <div className="container mx-auto px-4 py-8">
+          <AdSlot placement="header_banner" className="mb-10 max-w-4xl mx-auto" />
+
           {topNews.length > 0 && (
             <section className="mb-10">
               <div className="flex items-center justify-between mb-4">
@@ -569,6 +572,7 @@ export default function Home() {
             </div>
 
             <aside className="space-y-8">
+              <AdSlot placement="sidebar" className="max-w-[340px] mx-auto" />
               {videos.length > 0 && (
                 <section>
                   <div className="flex items-center justify-between mb-4">
@@ -806,7 +810,7 @@ export default function Home() {
           </div>
 
           <div className="space-y-14 mt-14">
-            {HOME_SECTION_RENDER_ORDER.map((key) => {
+            {HOME_SECTION_RENDER_ORDER.map((key, idx) => {
               const cat = sectionCategories[key];
               const posts = sectionPosts[key] ?? [];
               if (!cat || posts.length === 0) return null;
@@ -814,63 +818,74 @@ export default function Home() {
               const label = cat[`name_${currentLang}` as keyof Category] as string;
 
               return (
-                <section key={key}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2
-                      className={`text-2xl md:text-3xl font-bold flex items-center gap-2 ${
-                        isRTL ? 'flex-row-reverse' : 'flex-row'
-                      }`}
-                    >
-                      <CategoryIcon category={cat} boxSize={20} iconSize={12} />
-                      {label}
-                    </h2>
-                    <Link
-                      to={`/${currentLang}/category/${cat.slug}`}
-                      className="text-primary hover:underline"
-                    >
-                      {t('more')}
-                    </Link>
-                  </div>
+                <Fragment key={key}>
+                  <section>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2
+                        className={`text-2xl md:text-3xl font-bold flex items-center gap-2 ${
+                          isRTL ? 'flex-row-reverse' : 'flex-row'
+                        }`}
+                      >
+                        <CategoryIcon category={cat} boxSize={20} iconSize={12} />
+                        {label}
+                      </h2>
+                      <Link
+                        to={`/${currentLang}/category/${cat.slug}`}
+                        className="text-primary hover:underline"
+                      >
+                        {t('more')}
+                      </Link>
+                    </div>
 
-                  <div className="grid md:grid-cols-3 gap-6">
-                    {posts.slice(0, 6).map((post) => (
-                      <Link key={post.id} to={`/${currentLang}/${post.slug}`}>
-                        <div className="rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-card">
-                          {(() => {
-                            const url = getPostThumbUrl({
-                              content_type: post.content_type,
-                              image_url: post.image_url,
-                              video_url: post.video_url,
-                              video_thumbnail: post.video_thumbnail,
-                            });
-                            if (!url) return null;
+                    <div className="grid md:grid-cols-3 gap-6">
+                      {posts.slice(0, 6).map((post) => (
+                        <Link key={post.id} to={`/${currentLang}/${post.slug}`}>
+                          <div className="rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-card">
+                            {(() => {
+                              const url = getPostThumbUrl({
+                                content_type: post.content_type,
+                                image_url: post.image_url,
+                                video_url: post.video_url,
+                                video_thumbnail: post.video_thumbnail,
+                              });
+                              if (!url) return null;
 
-                            return (
-                              <div
-                                className={cn(
-                                  'relative overflow-hidden',
-                                  effectiveIsReel(post) ? 'aspect-[9/16] max-h-[320px]' : 'aspect-video'
-                                )}
-                              >
-                                <img
-                                  src={url}
-                                  alt={post[`title_${currentLang}` as keyof Post] as string}
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                />
+                              return (
+                                <div
+                                  className={cn(
+                                    'relative overflow-hidden',
+                                    effectiveIsReel(post)
+                                      ? 'aspect-[9/16] max-h-[320px]'
+                                      : 'aspect-video'
+                                  )}
+                                >
+                                  <img
+                                    src={url}
+                                    alt={post[`title_${currentLang}` as keyof Post] as string}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                  />
+                                </div>
+                              );
+                            })()}
+                            <div className="p-4">
+                              <div className="font-bold text-base line-clamp-2">
+                                {post[`title_${currentLang}` as keyof Post] as string}
                               </div>
-                            );
-                          })()}
-                          <div className="p-4">
-                            <div className="font-bold text-base line-clamp-2">
-                              {post[`title_${currentLang}` as keyof Post] as string}
                             </div>
                           </div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </section>
+                        </Link>
+                      ))}
+                    </div>
+                  </section>
+
+                  {idx === 0 && (
+                    <AdSlot
+                      placement="between_articles"
+                      className="max-w-3xl mx-auto mt-8"
+                    />
+                  )}
+                </Fragment>
               );
             })}
           </div>

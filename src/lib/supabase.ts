@@ -150,3 +150,22 @@ export type LiveStream = {
   created_at: string;
   updated_at: string;
 };
+
+export const AD_PLACEMENTS = ['header_banner', 'sidebar', 'between_articles', 'article'] as const;
+export type AdPlacement = (typeof AD_PLACEMENTS)[number];
+
+export type AdStatus = 'active' | 'inactive';
+
+export type Ad = {
+  id: string;
+  title: string | null;
+  media_url: string | null;
+  link: string | null;
+  placement: AdPlacement | string;
+  status: AdStatus;
+  created_at: string;
+  updated_at: string | null;
+  // Legacy columns kept for compatibility with older migration/code paths.
+  image_url?: string | null;
+  video_url?: string | null;
+};
