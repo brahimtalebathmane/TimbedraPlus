@@ -1,7 +1,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
-import Link from '@tiptap/extension-link';
+import TiptapLink from '@tiptap/extension-link';
 import {
   Bold,
   Italic,
@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 interface TipTapEditorProps {
   content: string;
@@ -30,14 +30,15 @@ export default function TipTapEditor({ content, onChange }: TipTapEditorProps) {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [showImageInput, setShowImageInput] = useState(false);
 
-  const editor = useEditor({
-    extensions: [
+  // Keep extensions stable to avoid unnecessary editor re-initialization.
+  const extensions = useMemo(
+    () => [
       StarterKit,
       Image.configure({
         inline: true,
         allowBase64: true,
       }),
-      Link.configure({
+      TiptapLink.configure({
         openOnClick: false,
         HTMLAttributes: {
           target: '_blank',
@@ -45,6 +46,11 @@ export default function TipTapEditor({ content, onChange }: TipTapEditorProps) {
         },
       }),
     ],
+    []
+  );
+
+  const editor = useEditor({
+    extensions,
     content,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());

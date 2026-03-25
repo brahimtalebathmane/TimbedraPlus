@@ -43,6 +43,10 @@ export default function VideoForm() {
   const { id } = useParams();
 
   const [loading, setLoading] = useState(false);
+  // Preserve `is_reel` during edits: we normalize YouTube URLs to watch URLs,
+  // which would otherwise lose the `/shorts/` signal needed by `inferIsReelFromVideoUrl`.
+  const [initialVideoUrl, setInitialVideoUrl] = useState<string | null>(null);
+  const [initialIsReel, setInitialIsReel] = useState<boolean | null>(null);
 
   const form = useForm<VideoFormValues>({
     resolver: zodResolver(videoSchema),
@@ -66,6 +70,8 @@ export default function VideoForm() {
           .maybeSingle();
         if (error) throw error;
         if (data) {
+          setInitialVideoUrl(data.video_url ?? null);
+          setInitialIsReel(typeof data.is_reel === 'boolean' ? data.is_reel : null);
           form.reset({
             title_ar: data.title_ar,
             title_fr: data.title_fr,
@@ -86,7 +92,8 @@ export default function VideoForm() {
   const onSubmit = async (values: VideoFormValues) => {
     setLoading(true);
     try {
-      const normalizedVideoUrl = normalizeYouTubeUrl(values.video_url);
+      const rawInput = values.video_url.trim();
+      const normalizedVideoUrl = normalizeYouTubeUrl(rawInput);
       const videoId = normalizedVideoUrl ? extractYouTubeVideoId(normalizedVideoUrl) : null;
       if (!normalizedVideoUrl || !videoId) {
         throw new Error('Invalid YouTube URL');
@@ -95,20 +102,44 @@ export default function VideoForm() {
       const thumbnail = getYouTubeThumbnailUrl(normalizedVideoUrl);
       if (!thumbnail) throw new Error('Unable to generate YouTube thumbnail');
 
+      const preserveIsReel =
+        id && id !== 'new' && initialVideoUrl != null && rawInput === initialVideoUrl;
+      const inferredIsReel = inferIsReelFromVideoUrl(rawInput);
+      const isReel = inferredIsReel ? true : preserveIsReel ? initialIsReel ?? false : false;
+
       const payload = {
         title_ar: values.title_ar,
         title_fr: values.title_fr,
         video_url: normalizedVideoUrl,
         thumbnail,
-        is_reel: inferIsReelFromVideoUrl(normalizedVideoUrl),
+        is_reel: isReel,
       };
 
-      if (id && id !== 'new') {
-        const { error } = await supabase.from('videos').update(payload).eq('id', id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('videos').insert([payload]);
-        if (error) throw error;
+      const upsertVideo = async (insertPayload: typeof payload) => {
+        if (id && id !== 'new') {
+          const { error } = await supabase.from('videos').update(insertPayload).eq('id', id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('videos').insert([insertPayload]);
+          if (error) throw error;
+        }
+      };
+
+      try {
+        await upsertVideo(payload);
+      } catch (error: unknown) {
+        // If DB migrations haven't landed yet, Supabase-js schema cache can miss `is_reel`.
+        const msg = getErrorMessage(error) ?? '';
+        const isMissingIsReel =
+          /Could not find the 'is_reel' column/i.test(msg) && /videos/i.test(msg);
+
+        if (isMissingIsReel) {
+          const fallbackPayload = { ...payload } as typeof payload;
+          delete (fallbackPayload as Record<string, unknown>).is_reel;
+          await upsertVideo(fallbackPayload);
+        } else {
+          throw error;
+        }
       }
 
       toast.success(t('success'));
@@ -121,6 +152,12 @@ export default function VideoForm() {
   };
 
   const videoUrl = form.watch('video_url');
+  const videoUrlStr = typeof videoUrl === 'string' ? videoUrl : '';
+  const previewIsReel =
+    inferIsReelFromVideoUrl(videoUrlStr) ||
+    (id && id !== 'new' && initialVideoUrl != null && videoUrlStr.trim() === initialVideoUrl
+      ? initialIsReel ?? false
+      : false);
   const thumbnailPreview = videoUrl ? getYouTubeThumbnailUrl(videoUrl) : null;
 
   return (
@@ -221,7 +258,7 @@ export default function VideoForm() {
                     <ResponsiveVideoPlayer
                       videoUrl={videoUrl}
                       title="Video preview"
-                      reel={{ video_url: videoUrl, is_reel: inferIsReelFromVideoUrl(videoUrl) }}
+                      reel={{ video_url: videoUrl, is_reel: previewIsReel }}
                     />
                   ) : videoUrl ? (
                     <div className="p-4 text-sm text-muted-foreground rounded-lg border">Invalid YouTube URL.</div>

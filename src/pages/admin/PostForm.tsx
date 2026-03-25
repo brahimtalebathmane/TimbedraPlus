@@ -92,6 +92,9 @@ export default function PostForm() {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  // Used to preserve reel state during edits when we normalize YouTube URLs.
+  const [initialVideoUrl, setInitialVideoUrl] = useState<string | null>(null);
+  const [initialIsReel, setInitialIsReel] = useState<boolean | null>(null);
 
   const form = useForm<PostForm>({
     resolver: zodResolver(postSchema),
@@ -113,6 +116,12 @@ export default function PostForm() {
 
   const contentType = form.watch('content_type');
   const videoUrl = form.watch('video_url');
+  const videoUrlStr = typeof videoUrl === 'string' ? videoUrl : '';
+  const previewIsReel =
+    inferIsReelFromVideoUrl(videoUrlStr) ||
+    (id && id !== 'new' && initialVideoUrl != null && videoUrlStr.trim() === initialVideoUrl
+      ? initialIsReel ?? false
+      : false);
 
   useEffect(() => {
     fetchCategories();
@@ -149,6 +158,10 @@ export default function PostForm() {
           row.video_thumbnail == null || typeof row.video_thumbnail === 'string'
             ? (row.video_thumbnail as string | null)
             : null;
+        const rawIsReel = (data as Record<string, unknown>).is_reel;
+        const isReel = typeof rawIsReel === 'boolean' ? rawIsReel : null;
+        setInitialVideoUrl(videoUrl);
+        setInitialIsReel(isReel);
 
         const status =
           data.status === 'draft' || data.status === 'published' || data.status === 'archived'
@@ -226,15 +239,22 @@ export default function PostForm() {
           throw new Error('Video URL is required');
         }
         const trimmed = String(rawVideoUrl).trim();
+        const preserveIsReel =
+          id && id !== 'new' && initialVideoUrl != null && trimmed === initialVideoUrl;
+        const inferredIsReel = inferIsReelFromVideoUrl(trimmed);
         if (extractYouTubeVideoId(trimmed)) {
           const normalizedVideoUrl = normalizeYouTubeUrl(trimmed);
           if (!normalizedVideoUrl) throw new Error('Invalid YouTube video URL');
           postData.video_url = normalizedVideoUrl;
-          postData.is_reel = inferIsReelFromVideoUrl(normalizedVideoUrl);
+          postData.is_reel = inferredIsReel
+            ? true
+            : preserveIsReel
+              ? initialIsReel ?? false
+              : false;
           delete postData.video_thumbnail;
         } else if (isDirectVideoUrl(trimmed)) {
           postData.video_url = trimmed;
-          postData.is_reel = false;
+          postData.is_reel = preserveIsReel ? initialIsReel ?? false : false;
           postData.video_width = null;
           postData.video_height = null;
           delete postData.video_thumbnail;
@@ -258,17 +278,37 @@ export default function PostForm() {
       if (postData.video_url == null) delete postData.video_url;
       if (postData.video_thumbnail == null) delete postData.video_thumbnail;
 
-      if (id && id !== 'new') {
-        const { error } = await supabase
-          .from('posts')
-          .update(postData as Record<string, unknown>)
-          .eq('id', id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('posts')
-          .insert(postData as Record<string, unknown>);
-        if (error) throw error;
+      const upsertPost = async (payload: Record<string, unknown>) => {
+        if (id && id !== 'new') {
+          const { error } = await supabase
+            .from('posts')
+            .update(payload)
+            .eq('id', id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('posts').insert(payload);
+          if (error) throw error;
+        }
+      };
+
+      try {
+        await upsertPost(postData);
+      } catch (error: unknown) {
+        // If DB migrations haven't landed yet, Supabase-js schema cache can miss `is_reel`.
+        // In that case, retry without reel-specific fields so the post still saves.
+        const msg = getErrorMessage(error) ?? '';
+        const isMissingIsReel =
+          /Could not find the 'is_reel' column/i.test(msg) && /posts/i.test(msg);
+
+        if (isMissingIsReel) {
+          const fallbackPayload = { ...postData } as Record<string, unknown>;
+          delete fallbackPayload.is_reel;
+          delete fallbackPayload.video_width;
+          delete fallbackPayload.video_height;
+          await upsertPost(fallbackPayload);
+        } else {
+          throw error;
+        }
       }
 
       toast.success(t('success'));
@@ -592,7 +632,7 @@ export default function PostForm() {
                           title="Video preview"
                           reel={{
                             video_url: videoUrl,
-                            is_reel: inferIsReelFromVideoUrl(videoUrl),
+                            is_reel: previewIsReel,
                           }}
                         />
                       ) : videoUrl ? (
@@ -607,7 +647,7 @@ export default function PostForm() {
                     <div className="text-sm text-muted-foreground">
                       Detected:{' '}
                       {extractYouTubeVideoId(videoUrl as string)
-                        ? inferIsReelFromVideoUrl(videoUrl as string)
+                        ? previewIsReel
                           ? 'YouTube Shorts (reel)'
                           : 'YouTube'
                         : isDirectVideoUrl(videoUrl as string)
