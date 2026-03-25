@@ -11,7 +11,7 @@ type AuthContextType = {
     email: string,
     password: string,
     name: string,
-    avatarUrl?: string | null
+    avatarFile?: File | null
   ) => Promise<void>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
@@ -71,20 +71,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string, name: string, avatarUrl?: string | null) => {
+  const signUp = async (email: string, password: string, name: string, avatarFile?: File | null) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
 
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        name,
-        email,
-        role: 'user',
-        avatar_url: avatarUrl ?? null,
-      });
-      if (profileError) throw profileError;
+    if (!data.user) return;
+
+    const session = data.session ?? (await supabase.auth.getSession()).data.session;
+
+    let avatarUrl: string | null = null;
+    if (avatarFile && session) {
+      const { uploadAvatar } = await import('@/lib/helpers');
+      avatarUrl = await uploadAvatar(avatarFile, data.user.id);
     }
+
+    const { error: profileError } = await supabase.from('profiles').insert({
+      id: data.user.id,
+      name,
+      email,
+      role: 'user',
+      avatar_url: avatarUrl,
+    });
+    if (profileError) throw profileError;
   };
 
   const signOut = async () => {

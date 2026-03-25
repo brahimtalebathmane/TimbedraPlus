@@ -25,13 +25,6 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   confirmPassword: z.string().min(6),
-  avatarUrl: z.preprocess(
-    (val) => {
-      const s = typeof val === 'string' ? val.trim() : '';
-      return s ? s : undefined;
-    },
-    z.string().url().optional()
-  ),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -41,6 +34,8 @@ export default function Register() {
   const navigate = useNavigate();
   const { signUp } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -49,9 +44,28 @@ export default function Register() {
       email: '',
       password: '',
       confirmPassword: '',
-      avatarUrl: '',
     },
   });
+
+  const onAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setAvatarFile(null);
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+        setAvatarPreview(null);
+      }
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error(t('profile_image_invalid_type'));
+      e.target.value = '';
+      return;
+    }
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
 
   const onSubmit = async (values: RegisterForm) => {
     setLoading(true);
@@ -60,7 +74,7 @@ export default function Register() {
         throw new Error('Passwords do not match');
       }
 
-      await signUp(values.email, values.password, values.name, values.avatarUrl ?? null);
+      await signUp(values.email, values.password, values.name, avatarFile);
       toast.success(t('success'));
       navigate(`/${i18n.language}`);
     } catch (error: unknown) {
@@ -139,23 +153,22 @@ export default function Register() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="avatarUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('profile_image_url_optional')}</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="url"
-                          placeholder={t('profile_image_url_optional_placeholder')}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+
+                <div className="space-y-2">
+                  <FormLabel>{t('profile_image_optional')}</FormLabel>
+                  <Input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={onAvatarChange} />
+                  <p className="text-xs text-muted-foreground">{t('profile_image_hint')}</p>
+                  {avatarPreview && (
+                    <div className="pt-2">
+                      <img
+                        src={avatarPreview}
+                        alt=""
+                        className="h-20 w-20 rounded-full object-cover border"
+                      />
+                    </div>
                   )}
-                />
+                </div>
+
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? t('loading') : t('register')}
                 </Button>
