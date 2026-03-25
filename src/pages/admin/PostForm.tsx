@@ -280,14 +280,22 @@ export default function PostForm() {
 
       const upsertPost = async (payload: Record<string, unknown>) => {
         if (id && id !== 'new') {
-          const { error } = await supabase
+          const { data, error } = await supabase
             .from('posts')
             .update(payload)
-            .eq('id', id);
+            .eq('id', id)
+            .select('*')
+            .maybeSingle();
           if (error) throw error;
+          if (!data) throw new Error('Post update returned no data');
         } else {
-          const { error } = await supabase.from('posts').insert(payload);
+          const { data, error } = await supabase
+            .from('posts')
+            .insert(payload)
+            .select('*')
+            .maybeSingle();
           if (error) throw error;
+          if (!data) throw new Error('Post insert returned no data');
         }
       };
 

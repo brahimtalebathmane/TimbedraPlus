@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface TipTapEditorProps {
   content: string;
@@ -30,10 +30,20 @@ export default function TipTapEditor({ content, onChange }: TipTapEditorProps) {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [showImageInput, setShowImageInput] = useState(false);
 
+  // Keep the latest `onChange` callback without forcing the TipTap editor
+  // to re-initialize when the parent re-renders.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   // Keep extensions stable to avoid unnecessary editor re-initialization.
   const extensions = useMemo(
     () => [
-      StarterKit,
+      // Some TipTap versions include a `link` extension inside StarterKit.
+      // We also add `@tiptap/extension-link`, so disable StarterKit's `link`
+      // to prevent the duplicate extension warning.
+      StarterKit.configure({ link: false } as any),
       Image.configure({
         inline: true,
         allowBase64: true,
@@ -49,18 +59,28 @@ export default function TipTapEditor({ content, onChange }: TipTapEditorProps) {
     []
   );
 
-  const editor = useEditor({
-    extensions,
-    content,
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-    },
-    editorProps: {
+  const editorProps = useMemo(
+    () => ({
       attributes: {
         class:
           'prose prose-sm dark:prose-invert max-w-none min-h-[300px] p-4 focus:outline-none',
       },
+    }),
+    [],
+  );
+
+  const handleUpdate = useCallback(
+    ({ editor }: { editor: { getHTML: () => string } }) => {
+      onChangeRef.current(editor.getHTML());
     },
+    [],
+  );
+
+  const editor = useEditor({
+    extensions,
+    content,
+    onUpdate: handleUpdate,
+    editorProps: editorProps,
   });
 
   if (!editor) {

@@ -85,8 +85,14 @@ export default function AdsAdmin() {
     const nextStatus: AdStatus = ad.status === 'active' ? 'inactive' : 'active';
     setTogglingId(ad.id);
     try {
-      const { error } = await supabase.from('ads').update({ status: nextStatus }).eq('id', ad.id);
+      const { data, error } = await supabase
+        .from('ads')
+        .update({ status: nextStatus })
+        .eq('id', ad.id)
+        .select('*')
+        .maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error('Ad update returned no data');
       toast.success(t('success'));
       fetchAds();
     } catch (err: unknown) {

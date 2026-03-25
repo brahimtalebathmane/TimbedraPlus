@@ -117,11 +117,22 @@ export default function VideoForm() {
 
       const upsertVideo = async (insertPayload: typeof payload) => {
         if (id && id !== 'new') {
-          const { error } = await supabase.from('videos').update(insertPayload).eq('id', id);
+          const { data, error } = await supabase
+            .from('videos')
+            .update(insertPayload)
+            .eq('id', id)
+            .select('*')
+            .maybeSingle();
           if (error) throw error;
+          if (!data) throw new Error('Video update returned no data');
         } else {
-          const { error } = await supabase.from('videos').insert([insertPayload]);
+          const { data, error } = await supabase
+            .from('videos')
+            .insert([insertPayload])
+            .select('*')
+            .maybeSingle();
           if (error) throw error;
+          if (!data) throw new Error('Video insert returned no data');
         }
       };
 

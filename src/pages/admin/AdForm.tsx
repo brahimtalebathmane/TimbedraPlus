@@ -164,11 +164,22 @@ export default function AdForm() {
       };
 
       if (editing) {
-        const { error } = await supabase.from('ads').update(payload).eq('id', id);
+        const { data, error } = await supabase
+          .from('ads')
+          .update(payload)
+          .eq('id', id)
+          .select('*')
+          .maybeSingle();
         if (error) throw error;
+        if (!data) throw new Error('Ad update returned no data');
       } else {
-        const { error } = await supabase.from('ads').insert([payload]);
+        const { data, error } = await supabase
+          .from('ads')
+          .insert([payload])
+          .select('*')
+          .maybeSingle();
         if (error) throw error;
+        if (!data) throw new Error('Ad insert returned no data');
       }
 
       toast.success(t('success'));
