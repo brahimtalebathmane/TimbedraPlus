@@ -81,8 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let avatarUrl: string | null = null;
     if (avatarFile && session) {
-      const { uploadAvatar } = await import('@/lib/helpers');
-      avatarUrl = await uploadAvatar(avatarFile, data.user.id);
+      try {
+        const { uploadAvatar } = await import('@/lib/helpers');
+        avatarUrl = await uploadAvatar(avatarFile, data.user.id);
+      } catch (uploadError) {
+        // Keep registration reliable even if Storage/bucket/policies aren't ready.
+        console.error('Avatar upload failed, continuing without avatar:', uploadError);
+        avatarUrl = null;
+      }
     }
 
     const { error: profileError } = await supabase.from('profiles').insert({

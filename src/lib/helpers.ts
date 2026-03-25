@@ -75,12 +75,12 @@ export async function uploadAvatar(file: File, userId: string): Promise<string> 
   const compressedFile = await compressImage(file);
 
   const uuid = crypto.randomUUID();
-  const fileExt = file.name.split('.').pop();
+  const fileExt = (file.name.split('.').pop() || '').toLowerCase() || 'png';
   const fileName = `${uuid}.${fileExt}`;
   const filePath = `${userId}/${fileName}`;
 
   const { error } = await supabase.storage.from('avatars').upload(filePath, compressedFile, {
-    upsert: false,
+    upsert: true,
     cacheControl: '3600',
   });
 

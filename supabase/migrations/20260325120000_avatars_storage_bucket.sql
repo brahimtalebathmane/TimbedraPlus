@@ -39,6 +39,7 @@ CREATE POLICY "Users can upload own avatar"
   TO authenticated
   WITH CHECK (
     bucket_id = 'avatars' AND
+    auth.uid() IS NOT NULL AND
     split_part(name, '/', 1) = auth.uid()::text
   );
 
@@ -47,10 +48,12 @@ CREATE POLICY "Users can update own avatar"
   TO authenticated
   USING (
     bucket_id = 'avatars' AND
+    auth.uid() IS NOT NULL AND
     split_part(name, '/', 1) = auth.uid()::text
   )
   WITH CHECK (
     bucket_id = 'avatars' AND
+    auth.uid() IS NOT NULL AND
     split_part(name, '/', 1) = auth.uid()::text
   );
 
@@ -59,5 +62,6 @@ CREATE POLICY "Users can delete own avatar"
   TO authenticated
   USING (
     bucket_id = 'avatars' AND
+    auth.uid() IS NOT NULL AND
     split_part(name, '/', 1) = auth.uid()::text
   );
