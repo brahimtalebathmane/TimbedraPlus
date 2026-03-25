@@ -138,6 +138,10 @@ export default function Article() {
     video_height: extra.video_height,
   };
 
+  const showHeroVideo = isVideoPost && !!videoUrl;
+  const showHeroImage = !isVideoPost && !!post.image_url;
+  const showHeroMedia = showHeroVideo || showHeroImage;
+
   return (
     <>
       <Helmet>
@@ -145,29 +149,33 @@ export default function Article() {
         <meta name="description" content={truncateText(content, 160)} />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={truncateText(content, 160)} />
-        <meta
-          property="og:image"
-          content={getPostThumbnailPath({
-            content_type: post.content_type,
-            image_url: post.image_url,
-            video_url: videoUrl,
-            video_thumbnail: videoThumbnail,
-          })}
-        />
+        {showHeroMedia && (
+          <meta
+            property="og:image"
+            content={getPostThumbnailPath({
+              content_type: post.content_type,
+              image_url: post.image_url,
+              video_url: videoUrl,
+              video_thumbnail: videoThumbnail,
+            })}
+          />
+        )}
         <meta property="og:url" content={shareUrl} />
         <meta property="og:type" content="article" />
-        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:card" content={showHeroMedia ? 'summary_large_image' : 'summary'} />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={truncateText(content, 160)} />
-        <meta
-          name="twitter:image"
-          content={getPostThumbnailPath({
-            content_type: post.content_type,
-            image_url: post.image_url,
-            video_url: videoUrl,
-            video_thumbnail: videoThumbnail,
-          })}
-        />
+        {showHeroMedia && (
+          <meta
+            name="twitter:image"
+            content={getPostThumbnailPath({
+              content_type: post.content_type,
+              image_url: post.image_url,
+              video_url: videoUrl,
+              video_thumbnail: videoThumbnail,
+            })}
+          />
+        )}
         <link rel="canonical" href={shareUrl} />
       </Helmet>
 
@@ -198,24 +206,31 @@ export default function Article() {
             </div>
           </div>
 
-          <div className="mb-8">
-            {isVideoPost && videoUrl ? (
-              <ResponsiveVideoPlayer videoUrl={videoUrl} title={title} reel={reelMeta} className="rounded-lg" />
-            ) : (
-              <div className="relative aspect-video rounded-lg overflow-hidden">
-                <img
-                  src={getPostThumbnailPath({
-                    content_type: post.content_type,
-                    image_url: post.image_url,
-                    video_url: videoUrl,
-                    video_thumbnail: videoThumbnail,
-                  })}
-                  alt={title}
-                  className="w-full h-full object-cover"
+          {showHeroMedia && (
+            <div className="mb-8">
+              {showHeroVideo ? (
+                <ResponsiveVideoPlayer
+                  videoUrl={videoUrl}
+                  title={title}
+                  reel={reelMeta}
+                  className="rounded-lg"
                 />
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="relative aspect-video rounded-lg overflow-hidden">
+                  <img
+                    src={getPostThumbnailPath({
+                      content_type: post.content_type,
+                      image_url: post.image_url,
+                      video_url: videoUrl,
+                      video_thumbnail: videoThumbnail,
+                    })}
+                    alt={title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div
             className="prose prose-lg dark:prose-invert max-w-none mb-8"
