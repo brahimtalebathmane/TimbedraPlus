@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { supabase, type Ad, type AdPlacement } from '@/lib/supabase';
 import { canPlayVideoUrl } from '@/lib/videoDisplay';
 import { VideoEmbed } from '@/components/VideoEmbed';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 const PLACEMENT_ASPECT: Partial<Record<AdPlacement, string>> = {
   header_banner: 'aspect-[16/9]',
@@ -20,35 +21,50 @@ export default function AdSlot({
 }) {
   const [ad, setAd] = useState<Ad | null>(null);
   const [loading, setLoading] = useState(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('ads')
-          .select('id,title,media_url,link,placement,status,image_url,video_url,created_at')
-          .eq('placement', placement)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (cancelled) return;
-        if (error) throw error;
-        setAd((data ?? null) as Ad | null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    load();
+    mountedRef.current = true;
     return () => {
-      cancelled = true;
+      mountedRef.current = false;
     };
+  }, []);
+
+  const load = async () => {
+    if (!mountedRef.current) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('ads')
+        .select('id,title,media_url,link,placement,status,image_url,video_url,created_at')
+        .eq('placement', placement)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (mountedRef.current) setAd((data ?? null) as Ad | null);
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load().catch(() => {
+      // Fail silently in UI; ads are optional.
+    });
   }, [placement]);
+
+  useSupabaseRealtime({
+    tables: ['ads'],
+    channelKey: `rt:ads:${placement}`,
+    onChange: () => {
+      load().catch(() => {
+        // Fail silently in UI; ads are optional.
+      });
+    },
+  });
 
   const mediaUrl = useMemo(() => {
     return ad?.media_url ?? ad?.video_url ?? ad?.image_url ?? null;

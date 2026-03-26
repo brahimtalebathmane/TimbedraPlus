@@ -7,6 +7,7 @@ import { supabase, Video } from '@/lib/supabase';
 import { formatRelativeTime } from '@/lib/helpers';
 import { effectiveIsReel } from '@/lib/videoDisplay';
 import { ResponsiveVideoPlayer } from '@/components/VideoEmbed';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 export default function Videos() {
   const { t, i18n } = useTranslation();
@@ -40,6 +41,27 @@ export default function Videos() {
 
     fetchVideos();
   }, [currentLang]);
+
+  useSupabaseRealtime({
+    tables: ['videos'],
+    channelKey: 'rt:videos',
+    onChange: () => {
+      (async () => {
+        setLoading(true);
+        try {
+          const { data } = await supabase
+            .from('videos')
+            .select('*')
+            .order('is_reel', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(30);
+          if (data) setVideos(data);
+        } finally {
+          setLoading(false);
+        }
+      })();
+    },
+  });
 
   return (
     <>

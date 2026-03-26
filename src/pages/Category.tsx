@@ -17,6 +17,7 @@ import {
 import { getPostThumbnailUrl, formatRelativeTime, truncateText } from '@/lib/helpers';
 import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
 import { cn } from '@/lib/utils';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 export default function Category() {
   const { t, i18n } = useTranslation();
@@ -28,38 +29,47 @@ export default function Category() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchCategory = async () => {
+    if (!slug) return;
+    setLoading(true);
+
+    try {
+      const { data: cat } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('slug', slug)
+        .maybeSingle();
+
+      if (cat) setCategory(cat);
+
+      const { data } = await supabase
+        .from('posts')
+        .select('*, category:categories(*), author:profiles(*)')
+        .eq('status', 'published')
+        .eq('category_id', cat?.id || '')
+        .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE] as string[])
+        .order('is_reel', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(24);
+
+      if (data) setPosts(sortPostsReelsFirst(data));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchCategory = async () => {
-      if (!slug) return;
-      setLoading(true);
-
-      try {
-        const { data: cat } = await supabase
-          .from('categories')
-          .select('*')
-          .eq('slug', slug)
-          .maybeSingle();
-
-        if (cat) setCategory(cat);
-
-        const { data } = await supabase
-          .from('posts')
-          .select('*, category:categories(*), author:profiles(*)')
-          .eq('status', 'published')
-          .eq('category_id', cat?.id || '')
-          .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE] as string[])
-          .order('is_reel', { ascending: false })
-          .order('created_at', { ascending: false })
-          .limit(24);
-
-        if (data) setPosts(sortPostsReelsFirst(data));
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCategory();
   }, [slug, currentLang]);
+
+  useSupabaseRealtime({
+    tables: ['posts', 'categories'],
+    channelKey: `rt:category:${slug ?? 'unknown'}`,
+    debounceMs: 400,
+    onChange: () => {
+      fetchCategory();
+    },
+  });
 
   const categoryTitle = category ? (category[`name_${currentLang}` as keyof CategoryType] as string) : null;
 

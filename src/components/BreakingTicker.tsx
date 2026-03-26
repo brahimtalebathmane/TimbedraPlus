@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, Category, Post, TickerSettings, TickerSource } from '@/lib/supabase';
 import { truncateText } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 type TickerPost = Pick<Post, 'id' | 'slug' | 'title_ar' | 'title_fr' | 'created_at'>;
 
@@ -45,35 +46,42 @@ export default function BreakingTicker({
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const loadSettings = async () => {
-      setLoading(true);
-      try {
-        const [{ data: settingsRows }, { data: cats }] = await Promise.all([
-          supabase
-            .from('ticker_settings')
-            .select('*')
-            .order('updated_at', { ascending: false })
-            .limit(1),
-          supabase.from('categories').select('*').order('created_at', { ascending: true }),
-        ]);
-
-        const row = (settingsRows?.[0] as TickerSettings | undefined) ?? null;
-        if (cancelled) return;
-        setSettings(row);
-        setCategories((cats as Category[]) ?? []);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    loadSettings();
+    mountedRef.current = true;
     return () => {
-      cancelled = true;
+      mountedRef.current = false;
     };
+  }, []);
+
+  const loadSettings = async () => {
+    if (!mountedRef.current) return;
+    setLoading(true);
+    try {
+      const [{ data: settingsRows }, { data: cats }] = await Promise.all([
+        supabase
+          .from('ticker_settings')
+          .select('*')
+          .order('updated_at', { ascending: false })
+          .limit(1),
+        supabase.from('categories').select('*').order('created_at', { ascending: true }),
+      ]);
+
+      const row = (settingsRows?.[0] as TickerSettings | undefined) ?? null;
+      if (!mountedRef.current) return;
+      setSettings(row);
+      setCategories((cats as Category[]) ?? []);
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSettings().catch(() => {
+      // Ticker should fail closed (render nothing) if it can't load.
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const effective = useMemo(() => {
@@ -98,35 +106,50 @@ export default function BreakingTicker({
     onEnabledChange?.(effective.enabled);
   }, [effective.enabled, onEnabledChange]);
 
+  const loadPosts = async () => {
+    if (!mountedRef.current) return;
+    if (!effective.enabled) {
+      setPosts([]);
+      return;
+    }
+
+    const q = supabase
+      .from('posts')
+      .select('id, slug, title_ar, title_fr, created_at')
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(effective.item_limit);
+
+    if (effective.source === 'breaking') q.eq('is_breaking', true);
+    if (effective.source === 'category' && effective.category_id) q.eq('category_id', effective.category_id);
+
+    const { data } = await q;
+    if (!mountedRef.current) return;
+    setPosts(((data ?? []) as TickerPost[]).filter((p) => Boolean(p.slug)));
+  };
+
   useEffect(() => {
-    let cancelled = false;
-
-    const loadPosts = async () => {
-      if (!effective.enabled) {
-        setPosts([]);
-        return;
-      }
-
-      const q = supabase
-        .from('posts')
-        .select('id, slug, title_ar, title_fr, created_at')
-        .eq('status', 'published')
-        .order('created_at', { ascending: false })
-        .limit(effective.item_limit);
-
-      if (effective.source === 'breaking') q.eq('is_breaking', true);
-      if (effective.source === 'category' && effective.category_id) q.eq('category_id', effective.category_id);
-
-      const { data } = await q;
-      if (cancelled) return;
-      setPosts(((data ?? []) as TickerPost[]).filter((p) => Boolean(p.slug)));
-    };
-
-    loadPosts();
-    return () => {
-      cancelled = true;
-    };
+    loadPosts().catch(() => {
+      // Fail silently; ticker will just show no items.
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effective.enabled, effective.source, effective.category_id, effective.item_limit]);
+
+  useSupabaseRealtime({
+    tables: ['ticker_settings', 'categories'],
+    channelKey: 'rt:ticker_settings',
+    onChange: () => {
+      loadSettings();
+    },
+  });
+
+  useSupabaseRealtime({
+    tables: ['posts'],
+    channelKey: 'rt:ticker_posts',
+    onChange: () => {
+      loadPosts();
+    },
+  });
 
   const categoryLabel = useMemo(() => {
     if (effective.source !== 'category' || !effective.category_id) return null;
@@ -158,11 +181,9 @@ export default function BreakingTicker({
 
   return (
     <div
-      className={cn('sticky top-0 z-[60] w-full', className)}
+      className={cn('sticky top-0 z-[60] w-full bg-primary text-primary-foreground', className)}
       style={{
         height: `${heightPx}px`,
-        backgroundColor: '#0091BE',
-        color: 'white',
       }}
       role="region"
       aria-label={t('breaking_news')}

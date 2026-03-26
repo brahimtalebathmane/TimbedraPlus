@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase, ContactInfo } from '@/lib/supabase';
 import { getErrorMessage } from '@/lib/utils';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 function normalizeWhatsappLink(whatsapp: string) {
   const value = whatsapp.trim();
@@ -32,27 +33,36 @@ export default function Contact() {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
+  const fetchContact = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('contact_info')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+
+      if (data && data.length > 0) setContact(data[0] as ContactInfo);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || t('error'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchContact = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('contact_info')
-          .select('*')
-          .order('updated_at', { ascending: false })
-          .limit(1);
-        if (error) throw error;
-
-        if (data && data.length > 0) setContact(data[0] as ContactInfo);
-      } catch (err: unknown) {
-        toast.error(getErrorMessage(err) || t('error'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchContact();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLang]);
+
+  useSupabaseRealtime({
+    tables: ['contact_info'],
+    channelKey: 'rt:contact_info',
+    onChange: () => {
+      fetchContact();
+    },
+  });
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

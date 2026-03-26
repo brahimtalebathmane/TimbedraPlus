@@ -25,6 +25,7 @@ import { useTheme } from '@/components/theme-provider';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, Category } from '@/lib/supabase';
 import { CategoryIcon } from '@/components/CategoryIcon';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 export default function Header() {
   const { t, i18n } = useTranslation();
@@ -56,6 +57,14 @@ export default function Header() {
       .order('created_at', { ascending: true });
     if (data) setCategories(data);
   };
+
+  useSupabaseRealtime({
+    tables: ['categories'],
+    channelKey: 'rt:categories',
+    onChange: () => {
+      fetchCategories();
+    },
+  });
 
   const changeLanguage = (lang: string) => {
     const currentPath = location.pathname;

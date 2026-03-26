@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/lib/utils';
 import AdSlot from '@/components/Ads/AdSlot';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 export default function Article() {
   const { slug } = useParams<{ slug: string }>();
@@ -38,6 +39,17 @@ export default function Article() {
       fetchPost();
     }
   }, [slug, currentLang]);
+
+  useSupabaseRealtime({
+    tables: ['posts'],
+    channelKey: `rt:article:${slug ?? 'unknown'}`,
+    debounceMs: 400,
+    enabled: Boolean(slug),
+    onChange: () => {
+      if (!slug) return;
+      fetchPost();
+    },
+  });
 
   const fetchPost = async () => {
     setLoading(true);
@@ -95,6 +107,17 @@ export default function Article() {
   useEffect(() => {
     if (post?.id) fetchComments(post.id);
   }, [post?.id]);
+
+  useSupabaseRealtime({
+    tables: ['comments'],
+    channelKey: `rt:comments:${post?.id ?? 'unknown'}`,
+    debounceMs: 300,
+    enabled: Boolean(post?.id),
+    onChange: () => {
+      if (!post?.id) return;
+      fetchComments(post.id);
+    },
+  });
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const shareTitle = post ? post[`title_${currentLang}` as keyof Post] as string : '';

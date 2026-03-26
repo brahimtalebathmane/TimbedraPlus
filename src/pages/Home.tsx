@@ -1,7 +1,6 @@
 import { useState, useEffect, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { Clock, TrendingUp, Music2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,7 @@ import {
 import { formatRelativeTime, truncateText, getYouTubeThumbnailUrl, getPostThumbnailUrl } from '@/lib/helpers';
 import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
 import { cn } from '@/lib/utils';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 type TopNewsPost = Pick<
   Post,
@@ -169,8 +169,9 @@ export default function Home() {
     setTopNews(merged.slice(0, 5));
   };
 
-  const fetchLatest = async () => {
-    const from = (page - 1) * 6;
+  const fetchLatest = async (opts?: { page?: number; replace?: boolean }) => {
+    const targetPage = opts?.page ?? page;
+    const from = (targetPage - 1) * 6;
     const to = from + 6;
 
     const { data } = await supabase
@@ -184,7 +185,7 @@ export default function Home() {
 
     if (data) {
       const visible = sortPostsReelsFirst(data.slice(0, 6));
-      if (page === 1) {
+      if (opts?.replace || targetPage === 1) {
         setLatest(visible);
       } else {
         setLatest((prev) => sortPostsReelsFirst([...prev, ...visible]));
@@ -296,6 +297,24 @@ export default function Home() {
     setPage((prev) => prev + 1);
   };
 
+  const reloadAll = () => {
+    setPage(1);
+    fetchTopNews();
+    fetchTrending();
+    fetchVideos();
+    fetchTiktokAndSections();
+    fetchLatest({ page: 1, replace: true });
+  };
+
+  useSupabaseRealtime({
+    tables: ['posts', 'videos', 'categories', 'contact_info'],
+    channelKey: 'rt:home',
+    debounceMs: 500,
+    onChange: () => {
+      reloadAll();
+    },
+  });
+
   return (() => {
     const isRTL = currentLang === 'ar';
 
@@ -312,16 +331,16 @@ export default function Home() {
           <meta name="description" content={t('site_name')} />
         </Helmet>
 
-        <div className="container mx-auto px-4 py-8">
-          <AdSlot placement="header_banner" className="mb-10 max-w-4xl mx-auto" />
+        <div className="container mx-auto px-4 py-6">
+          <AdSlot placement="header_banner" className="mb-8 max-w-4xl mx-auto" />
 
           {topNews.length > 0 && (
             <section className="mb-10">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-3xl font-bold">{t('breaking_news')}</h2>
+                <h2 className="text-2xl md:text-3xl font-bold">{t('breaking_news')}</h2>
               </div>
 
-              <div className="lg:grid lg:grid-cols-3 gap-8 items-start">
+              <div className="lg:grid lg:grid-cols-3 gap-6 items-start">
                 <div className="lg:col-span-2">
                   <Link to={`/${currentLang}/${topNews[slideIndex].slug}`}>
                     <div className="overflow-hidden rounded-xl bg-card shadow-sm hover:shadow-md transition-shadow">
@@ -342,11 +361,11 @@ export default function Home() {
                             <img
                               src={url}
                               alt={title}
-                              className="w-full h-[260px] md:h-[320px] object-cover"
+                              className="w-full h-[320px] md:h-[420px] object-cover"
                               loading="lazy"
                             />
                           ) : (
-                            <div className="w-full h-[260px] md:h-[320px] bg-muted" />
+                            <div className="w-full h-[320px] md:h-[420px] bg-muted" />
                           );
                         })()}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
@@ -358,7 +377,7 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <CardContent className="p-6">
+                      <CardContent className="p-5 md:p-6">
                         <p className="text-muted-foreground text-lg line-clamp-2">
                           {truncateText(
                             topNews[slideIndex][`content_${currentLang}` as keyof TopNewsPost] as string,
@@ -386,7 +405,7 @@ export default function Home() {
                           key={post.id}
                           type="button"
                           onClick={() => setSlideIndex(i)}
-                          className="w-full text-left group hover:bg-muted/30 rounded-lg p-2 transition-colors"
+                          className="w-full text-left group hover:bg-muted/30 rounded-lg p-3 transition-colors"
                           aria-label={`Go to slide ${i + 1}`}
                         >
                           <div className={`flex gap-3 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -508,15 +527,10 @@ export default function Home() {
               </h2>
 
               <div className="grid md:grid-cols-2 gap-6 mb-8">
-                {latest.map((post, index) => (
-                  <motion.div
-                    key={post.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.04 }}
-                  >
+                {latest.map((post) => (
+                  <div key={post.id}>
                     <Link to={`/${currentLang}/${post.slug}`}>
-                      <Card className="overflow-hidden hover:shadow-lg hover:scale-105 transition-all duration-300">
+                      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
                         {(() => {
                           const url = getPostThumbUrl({
                             content_type: post.content_type,
@@ -558,7 +572,7 @@ export default function Home() {
                         </CardContent>
                       </Card>
                     </Link>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
 

@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { getVideoEmbedUrl } from '@/lib/helpers';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 type LiveStream = {
   id: string;
@@ -38,22 +39,32 @@ export default function Streams() {
   const [streams, setStreams] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchStreams = async () => {
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from('live_streams')
+        .select('*')
+        .order('started_at', { ascending: false })
+        .limit(30);
+      if (data) setStreams(data as LiveStream[]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStreams = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase
-          .from('live_streams')
-          .select('*')
-          .order('started_at', { ascending: false })
-          .limit(30);
-        if (data) setStreams(data as LiveStream[]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStreams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useSupabaseRealtime({
+    tables: ['live_streams'],
+    channelKey: 'rt:live_streams',
+    onChange: () => {
+      fetchStreams();
+    },
+  });
 
   const { activeStream, previousStreams } = useMemo(() => {
     const active = streams.find((s) => s.is_active) ?? null;
