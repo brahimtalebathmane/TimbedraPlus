@@ -99,7 +99,7 @@ export default function Footer() {
           <div className="space-y-3">
             <Link to={`/${currentLang}`} className="flex items-center gap-3">
               <img
-                src="https://i.postimg.cc/JzzwfmdL/LOGO-TEMDHRA.png"
+                src="https://i.postimg.cc/76dz2KJ8/jugiukj.png"
                 alt={t('site_name')}
                 className="h-10 w-auto"
               />
