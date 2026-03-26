@@ -104,7 +104,7 @@ export default function Footer() {
                 className="h-10 w-auto"
               />
             </Link>
-            <div className="text-sm text-muted-foreground">{t('site_name')}</div>
+            <div className="text-sm text-muted-foreground">{t('footer_rights')}</div>
           </div>
 
           <div className="space-y-3">
