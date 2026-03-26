@@ -104,6 +104,7 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(true);
   const [slideIndex, setSlideIndex] = useState(0);
   const [tiktokUrl, setTiktokUrl] = useState<string | null>(null);
+  const [youtubeUrl, setYoutubeUrl] = useState<string | null>(null);
   const [sectionCategories, setSectionCategories] = useState<Partial<Record<HomeSectionKey, Category | null>>>({});
   const [sectionPosts, setSectionPosts] = useState<Partial<Record<HomeSectionKey, Post[]>>>({});
   const [sectionsLoading, setSectionsLoading] = useState(false);
@@ -225,14 +226,15 @@ export default function Home() {
         supabase.from('categories').select('*').order('created_at', { ascending: true }),
         supabase
           .from('contact_info')
-          .select('tiktok')
+          .select('tiktok, youtube')
           .order('updated_at', { ascending: false })
           .limit(1),
       ]);
 
       const categories = (categoriesRes.data ?? []) as Category[];
-      const tiktokRow = contactRes.data?.[0] as { tiktok?: string | null } | undefined;
-      setTiktokUrl(tiktokRow?.tiktok ?? null);
+      const contactRow = contactRes.data?.[0] as { tiktok?: string | null; youtube?: string | null } | undefined;
+      setTiktokUrl(contactRow?.tiktok ?? null);
+      setYoutubeUrl(contactRow?.youtube ?? null);
 
       const findBestCategory = (def: SectionDef): Category | null => {
         let best: { cat: Category; score: number } | null = null;
@@ -768,21 +770,36 @@ export default function Home() {
                 )}
               </section>
 
-              {tiktokUrl && (
+              {(tiktokUrl || youtubeUrl) && (
                 <section className="rounded-xl border p-4 bg-card/50">
                   <div className="flex items-center gap-3 mb-3">
                     <Music2 className="w-5 h-5 text-primary" />
-                    <h2 className="text-2xl font-bold">{t('follow_tiktok')}</h2>
+                    <h2 className="text-2xl font-bold">{t('follow_us')}</h2>
                   </div>
 
-                  <a
-                    href={tiktokUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center w-full rounded-lg bg-primary px-4 py-3 text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
-                  >
-                    {t('follow_now')}
-                  </a>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {tiktokUrl && (
+                      <a
+                        href={tiktokUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center w-full rounded-lg bg-primary px-4 py-3 text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
+                      >
+                        {t('follow_tiktok')}
+                      </a>
+                    )}
+
+                    {youtubeUrl && (
+                      <a
+                        href={youtubeUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center w-full rounded-lg bg-primary px-4 py-3 text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
+                      >
+                        {t('follow_youtube')}
+                      </a>
+                    )}
+                  </div>
                 </section>
               )}
 

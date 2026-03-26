@@ -270,7 +270,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>© {new Date().getFullYear()} {t('site_name')}</span>
+          <span>{t('footer_rights')}</span>
           <div className="flex flex-wrap items-center gap-4">
             <Link to={`/${currentLang}`} className="hover:text-foreground transition-colors">
               {t('home')}
