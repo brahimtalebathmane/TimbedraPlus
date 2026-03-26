@@ -344,8 +344,8 @@ export default function Home() {
 
               <div className="lg:grid lg:grid-cols-3 gap-6 items-start">
                 <div className="lg:col-span-2">
-                  <Link to={`/${currentLang}/${topNews[slideIndex].slug}`}>
-                    <div className="overflow-hidden rounded-xl bg-card shadow-sm hover:shadow-md transition-shadow">
+                  <div className="relative rounded-[12px] overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow">
+                    <Link to={`/${currentLang}/${topNews[slideIndex].slug}`} className="block">
                       <div className="relative">
                         {(() => {
                           const url = getPostThumbUrl({
@@ -355,45 +355,95 @@ export default function Home() {
                             video_thumbnail: topNews[slideIndex].video_thumbnail,
                           });
 
-                          const title = topNews[slideIndex][
-                            `title_${currentLang}` as keyof TopNewsPost
-                          ] as string;
+                          const title = topNews[slideIndex][`title_${currentLang}` as keyof TopNewsPost] as string;
 
                           return url ? (
                             <img
                               src={url}
                               alt={title}
-                              className="w-full h-[320px] md:h-[420px] object-cover"
+                              className="w-full h-[300px] sm:h-[340px] md:h-[420px] object-cover"
                               loading="lazy"
                             />
                           ) : (
-                            <div className="w-full h-[320px] md:h-[420px] bg-muted" />
+                            <div className="w-full h-[300px] sm:h-[340px] md:h-[420px] bg-muted" />
                           );
                         })()}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                        <div className="absolute left-4 bottom-4 right-4">
-                          <Badge className="w-fit mb-3">{t('breaking_news')}</Badge>
-                          <h2 className="text-2xl md:text-3xl font-bold leading-tight text-primary-foreground">
+
+                        <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-black/90 to-transparent" />
+
+                        <div className="absolute inset-x-4 bottom-6">
+                          <h2 className="text-center text-white font-bold leading-snug text-xl sm:text-2xl md:text-3xl drop-shadow">
                             {topNews[slideIndex][`title_${currentLang}` as keyof TopNewsPost] as string}
                           </h2>
                         </div>
                       </div>
+                    </Link>
 
-                      <CardContent className="p-5 md:p-6">
-                        <p className="text-muted-foreground text-lg line-clamp-2">
-                          {truncateText(
-                            topNews[slideIndex][`content_${currentLang}` as keyof TopNewsPost] as string,
-                            180
+                    {topNews.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSlideIndex((prev) => (prev - 1 + topNews.length) % topNews.length);
+                          }}
+                          className={cn(
+                            'absolute top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/40 backdrop-blur-sm text-white',
+                            'hover:bg-black/55 active:bg-black/65 transition-colors',
+                            'inline-flex items-center justify-center',
+                            'shadow-sm',
+                            isRTL ? 'right-3' : 'left-3'
                           )}
-                        </p>
+                          aria-label="Previous slide"
+                        >
+                          {isRTL ? '→' : '←'}
+                        </button>
 
-                        <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="w-4 h-4" />
-                          {formatRelativeTime(topNews[slideIndex].created_at, currentLang)}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSlideIndex((prev) => (prev + 1) % topNews.length);
+                          }}
+                          className={cn(
+                            'absolute top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/40 backdrop-blur-sm text-white',
+                            'hover:bg-black/55 active:bg-black/65 transition-colors',
+                            'inline-flex items-center justify-center',
+                            'shadow-sm',
+                            isRTL ? 'left-3' : 'right-3'
+                          )}
+                          aria-label="Next slide"
+                        >
+                          {isRTL ? '←' : '→'}
+                        </button>
+
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+                          {topNews.map((_, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSlideIndex(i);
+                              }}
+                              className="h-6 w-6 inline-flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              aria-label={`Go to slide ${i + 1}`}
+                            >
+                              <span
+                                className={cn(
+                                  'h-2 w-2 rounded-full transition-colors',
+                                  i === slideIndex ? 'bg-white' : 'bg-white/40'
+                                )}
+                              />
+                            </button>
+                          ))}
                         </div>
-                      </CardContent>
-                    </div>
-                  </Link>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="lg:col-span-1">
@@ -443,54 +493,6 @@ export default function Home() {
                         </button>
                       ))}
                   </div>
-
-                  {topNews.length > 1 && (
-                    <div className="mt-4">
-                      <div className="flex items-center justify-between">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="bg-background/90"
-                          onClick={() =>
-                            setSlideIndex((prev) => (prev - 1 + topNews.length) % topNews.length)
-                          }
-                          aria-label="Previous slide"
-                        >
-                          {currentLang === 'ar' ? '→' : '←'}
-                        </Button>
-
-                        <div className="flex items-center gap-2">
-                          {topNews.map((_, i) => (
-                            <button
-                              key={i}
-                              type="button"
-                              onClick={() => setSlideIndex(i)}
-                              className="h-6 w-6 flex items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                              aria-label={`Go to slide ${i + 1}`}
-                            >
-                              <span
-                                className={`h-2 w-2 rounded-full transition-colors ${
-                                  i === slideIndex ? 'bg-primary' : 'bg-muted-foreground/30'
-                                }`}
-                              />
-                            </button>
-                          ))}
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="bg-background/90"
-                          onClick={() => setSlideIndex((prev) => (prev + 1) % topNews.length)}
-                          aria-label="Next slide"
-                        >
-                          {currentLang === 'ar' ? '←' : '→'}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
