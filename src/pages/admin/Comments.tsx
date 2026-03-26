@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, Comment } from '@/lib/supabase';
-import { getErrorMessage } from '@/lib/utils';
 import { formatDate } from '@/lib/helpers';
 
 import {
@@ -44,7 +43,8 @@ export default function CommentsAdmin() {
       if (error) throw error;
       setComments((data ?? []) as Comment[]);
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error) || t('error'));
+      console.error(error);
+      toast.error(t('error'));
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,8 @@ export default function CommentsAdmin() {
       toast.success(t('success'));
       await fetchComments();
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error) || t('error'));
+      console.error(error);
+      toast.error(t('error'));
     }
   };
 
@@ -101,7 +102,7 @@ export default function CommentsAdmin() {
                   <TableCell>
                     {(() => {
                       const author = Array.isArray(c.user) ? c.user[0] : c.user;
-                      return author?.name ?? 'User';
+                      return author?.name ?? t('user');
                     })()}
                   </TableCell>
                   <TableCell className="max-w-lg">

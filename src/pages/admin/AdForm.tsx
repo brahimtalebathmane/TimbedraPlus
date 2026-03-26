@@ -4,12 +4,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, AD_PLACEMENTS, type AdPlacement, type AdStatus } from '@/lib/supabase';
 import { canPlayVideoUrl } from '@/lib/videoDisplay';
 import { normalizeYouTubeUrl } from '@/lib/helpers';
-import { getErrorMessage, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -43,22 +43,24 @@ function looksLikeUrl(url: string): boolean {
   }
 }
 
-const adSchema = z.object({
-  title: z.string().min(2),
-  media_url: z.string().min(2).refine((val) => looksLikeUrl(val), {
-    message: 'Media URL must be a valid URL (https://...)',
-  }),
-  link: z
-    .string()
-    .optional()
-    .refine((val) => val == null || val === '' || looksLikeUrl(val), {
-      message: 'Link must be a valid URL',
+function createAdSchema(t: (key: string) => string) {
+  return z.object({
+    title: z.string().min(2),
+    media_url: z.string().min(2).refine((val) => looksLikeUrl(val), {
+      message: t('url_invalid'),
     }),
-  placement: placementEnum,
-  status: z.enum(['active', 'inactive']),
-});
+    link: z
+      .string()
+      .optional()
+      .refine((val) => val == null || val === '' || looksLikeUrl(val), {
+        message: t('url_invalid'),
+      }),
+    placement: placementEnum,
+    status: z.enum(['active', 'inactive']),
+  });
+}
 
-type AdFormValues = z.infer<typeof adSchema>;
+type AdFormValues = z.infer<ReturnType<typeof createAdSchema>>;
 
 const PLACEMENT_ASPECT: Record<AdPlacement, string> = {
   header_banner: 'aspect-[16/9]',
@@ -74,6 +76,8 @@ export default function AdForm() {
   const isRTL = i18n.language === 'ar';
   const editing = !!id && id !== 'new';
   const [loading, setLoading] = useState(false);
+
+  const adSchema = useMemo(() => createAdSchema(t), [t]);
 
   const form = useForm<AdFormValues>({
     resolver: zodResolver(adSchema),
@@ -99,7 +103,7 @@ export default function AdForm() {
 
         if (error) throw error;
         if (!data) {
-          toast.error(t('error') ?? 'Ad not found');
+          toast.error(t('ad_not_found'));
           navigate('/admin/ads');
           return;
         }
@@ -116,7 +120,8 @@ export default function AdForm() {
           status: derivedStatus,
         });
       } catch (err: unknown) {
-        toast.error(getErrorMessage(err) || t('error'));
+        console.error(err);
+        toast.error(t('error'));
       } finally {
         setLoading(false);
       }
@@ -139,9 +144,9 @@ export default function AdForm() {
     return {
       url: normalized,
       isVideo,
-      title: watchedTitle?.trim() || 'Advertisement',
+      title: watchedTitle?.trim() || t('advertisements'),
     };
-  }, [watchedMediaUrl, watchedTitle]);
+  }, [t, watchedMediaUrl, watchedTitle]);
 
   const onSubmit = async (values: AdFormValues) => {
     setLoading(true);
@@ -185,7 +190,8 @@ export default function AdForm() {
       toast.success(t('success'));
       navigate('/admin/ads');
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || t('error'));
+      console.error(err);
+      toast.error(t('error'));
     } finally {
       setLoading(false);
     }
@@ -204,12 +210,16 @@ export default function AdForm() {
   return (
     <div className="max-w-4xl space-y-6">
       <Button variant="ghost" onClick={() => navigate('/admin/ads')} className="mb-6">
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Advertisements
+        {isRTL ? (
+          <ArrowRight className={cn('w-4 h-4', isRTL ? 'ml-2' : 'mr-2')} />
+        ) : (
+          <ArrowLeft className={cn('w-4 h-4', isRTL ? 'ml-2' : 'mr-2')} />
+        )}
+        {t('advertisements')}
       </Button>
 
       <h1 className="text-3xl font-bold">
-        {editing ? 'Edit advertisement' : 'Add advertisement'}
+        {editing ? t('edit_advertisement') : t('add_advertisement')}
       </h1>
 
       <Form {...form}>
@@ -222,9 +232,13 @@ export default function AdForm() {
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Title</FormLabel>
+                      <FormLabel>{t('ad_title')}</FormLabel>
                       <FormControl>
-                        <Input {...field} dir={isRTL ? 'rtl' : undefined} placeholder="Advertisement title" />
+                        <Input
+                          {...field}
+                          dir={isRTL ? 'rtl' : undefined}
+                          placeholder={t('ad_title_placeholder')}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -236,16 +250,24 @@ export default function AdForm() {
                   name="placement"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Placement</FormLabel>
+                      <FormLabel>{t('placement')}</FormLabel>
                       <FormControl>
                         <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select placement" />
+                            <SelectValue placeholder={t('select_placement')} />
                           </SelectTrigger>
                           <SelectContent>
                             {AD_PLACEMENTS.map((p) => (
                               <SelectItem key={p} value={p}>
-                                {p}
+                                {t(
+                                  p === 'header_banner'
+                                    ? 'placement_header_banner'
+                                    : p === 'sidebar'
+                                      ? 'placement_sidebar'
+                                      : p === 'between_articles'
+                                        ? 'placement_between_articles'
+                                        : 'placement_article'
+                                )}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -262,8 +284,8 @@ export default function AdForm() {
                   render={({ field }) => (
                     <FormItem className="flex items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
-                        <FormLabel className="m-0">Active</FormLabel>
-                        <FormDescription>Show on the website</FormDescription>
+                        <FormLabel className="m-0">{t('active')}</FormLabel>
+                        <FormDescription>{t('show_on_website')}</FormDescription>
                       </div>
                       <FormControl>
                         <Switch
@@ -284,11 +306,11 @@ export default function AdForm() {
                   name="media_url"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Media URL (image or video)</FormLabel>
+                      <FormLabel>{t('media_url')}</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
-                          placeholder="https://example.com/banner.jpg (or YouTube/direct video URL)"
+                          placeholder={t('media_url_placeholder')}
                         />
                       </FormControl>
                       <FormMessage />
@@ -301,9 +323,9 @@ export default function AdForm() {
                   name="link"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Link URL (optional)</FormLabel>
+                      <FormLabel>{t('link_url')}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="https://example.com" />
+                        <Input {...field} placeholder={t('link_url_placeholder')} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -312,7 +334,7 @@ export default function AdForm() {
 
                 {preview && (
                   <div>
-                    <div className="text-sm text-muted-foreground mb-2">Preview</div>
+                    <div className="text-sm text-muted-foreground mb-2">{t('preview')}</div>
                     <div className={cn('w-full overflow-hidden rounded-lg border bg-card', aspectClass, maxHeight)}>
                       {preview.isVideo ? (
                         <div className="w-full h-full bg-black">
@@ -338,10 +360,10 @@ export default function AdForm() {
 
           <div className="flex gap-4">
             <Button type="submit" disabled={loading}>
-              {editing ? 'Save changes' : 'Add advertisement'}
+              {editing ? t('save') : t('add_advertisement')}
             </Button>
             <Button type="button" variant="outline" onClick={() => navigate('/admin/ads')}>
-              Cancel
+              {t('cancel')}
             </Button>
           </div>
         </form>

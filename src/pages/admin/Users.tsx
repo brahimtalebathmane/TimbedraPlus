@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase, Profile } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { getErrorMessage } from '@/lib/utils';
 
 import {
   Table,
@@ -30,7 +29,8 @@ export default function UsersAdmin() {
       if (error) throw error;
       setUsers((data ?? []) as Profile[]);
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error) || t('error'));
+      console.error(error);
+      toast.error(t('error'));
     } finally {
       setLoading(false);
     }

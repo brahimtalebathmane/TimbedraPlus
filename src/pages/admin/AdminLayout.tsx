@@ -5,16 +5,17 @@ import { cn } from '@/lib/utils';
 import Footer from '@/components/Footer';
 
 export default function AdminLayout() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
+  const isRTL = i18n.language === 'ar';
 
   const navigation = [
     { name: t('admin_dashboard'), href: '/admin', icon: LayoutDashboard },
     { name: t('posts'), href: '/admin/posts', icon: FileText },
     { name: t('categories'), href: '/admin/categories', icon: FolderOpen },
     { name: t('videos'), href: '/admin/videos', icon: Video },
-    { name: 'Advertisements', href: '/admin/ads', icon: Megaphone },
-    { name: 'Media Library', href: '/admin/media', icon: ImageIcon },
+    { name: t('ads'), href: '/admin/ads', icon: Megaphone },
+    { name: t('media_library'), href: '/admin/media', icon: ImageIcon },
     { name: t('streams'), href: '/admin/streams', icon: Tv },
     { name: t('contact'), href: '/admin/contact-settings', icon: Phone },
     { name: t('comments'), href: '/admin/comments', icon: MessageSquareText },
@@ -22,9 +23,9 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="min-h-screen bg-muted/10 flex flex-col">
-      <div className="flex flex-1">
-        <aside className="w-64 min-h-screen bg-card border-r">
+    <div className="min-h-screen bg-muted/10 flex flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className={`flex flex-1 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
+        <aside className={`w-64 min-h-screen bg-card ${isRTL ? 'border-l' : 'border-r'}`}>
           <div className="p-6">
             <h1 className="text-2xl font-bold text-primary">{t('admin_dashboard')}</h1>
           </div>
@@ -34,7 +35,7 @@ export default function AdminLayout() {
                 key={item.href}
                 to={item.href}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
+                  `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isRTL ? 'flex-row-reverse justify-end' : ''}`,
                   location.pathname === item.href
                     ? 'bg-primary text-primary-foreground'
                     : 'hover:bg-muted'

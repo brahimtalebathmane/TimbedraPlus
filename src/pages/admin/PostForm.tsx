@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowLeft, Upload } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -55,32 +55,34 @@ import { CategoryIcon } from '@/components/CategoryIcon';
 
 const contentTypeEnum = z.enum(CONTENT_TYPES as unknown as [string, ...string[]]);
 
-const postSchema = z.object({
-  title_ar: z.string().min(2),
-  title_fr: z.string().min(2),
-  content_ar: z.string().refine(validateTipTapContent, {
-    message: 'Content must not be empty',
-  }),
-  content_fr: z.string().refine(validateTipTapContent, {
-    message: 'Content must not be empty',
-  }),
-  slug: z.string().min(2),
-  image_url: z.string().optional().nullable(),
-  video_url: z
-    .string()
-    .optional()
-    .nullable()
-    .refine((val) => val == null || val === '' || canPlayVideoUrl(val), {
-      message: 'Invalid video URL',
+function createPostSchema(t: (key: string) => string) {
+  return z.object({
+    title_ar: z.string().min(2),
+    title_fr: z.string().min(2),
+    content_ar: z.string().refine(validateTipTapContent, {
+      message: t('content_required'),
     }),
-  video_thumbnail: z.string().optional().nullable(),
-  category_id: z.string().uuid(),
-  status: z.enum(['draft', 'published', 'archived']),
-  content_type: contentTypeEnum,
-  is_breaking: z.boolean(),
-});
+    content_fr: z.string().refine(validateTipTapContent, {
+      message: t('content_required'),
+    }),
+    slug: z.string().min(2),
+    image_url: z.string().optional().nullable(),
+    video_url: z
+      .string()
+      .optional()
+      .nullable()
+      .refine((val) => val == null || val === '' || canPlayVideoUrl(val), {
+        message: t('invalid_video_url'),
+      }),
+    video_thumbnail: z.string().optional().nullable(),
+    category_id: z.string().uuid(),
+    status: z.enum(['draft', 'published', 'archived']),
+    content_type: contentTypeEnum,
+    is_breaking: z.boolean(),
+  });
+}
 
-type PostForm = z.infer<typeof postSchema>;
+type PostForm = z.infer<ReturnType<typeof createPostSchema>>;
 
 export default function PostForm() {
   const { t, i18n } = useTranslation();
@@ -95,6 +97,8 @@ export default function PostForm() {
   // Used to preserve reel state during edits when we normalize YouTube URLs.
   const [initialVideoUrl, setInitialVideoUrl] = useState<string | null>(null);
   const [initialIsReel, setInitialIsReel] = useState<boolean | null>(null);
+
+  const postSchema = useMemo(() => createPostSchema(t), [t]);
 
   const form = useForm<PostForm>({
     resolver: zodResolver(postSchema),
@@ -193,7 +197,8 @@ export default function PostForm() {
         }
       }
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error) || t('error'));
+      console.error(error);
+      toast.error(t('error'));
     } finally {
       setLoading(false);
     }
@@ -210,7 +215,8 @@ export default function PostForm() {
       setImagePreview(url);
       toast.success(t('success'));
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error) || t('error'));
+      console.error(error);
+      toast.error(t('error'));
     } finally {
       setUploading(false);
     }
@@ -236,7 +242,7 @@ export default function PostForm() {
       if (postData.content_type === VIDEO_CONTENT_TYPE) {
         const rawVideoUrl = postData.video_url;
         if (typeof rawVideoUrl !== 'string' || !String(rawVideoUrl).trim()) {
-          throw new Error('Video URL is required');
+          throw new Error(t('video_url_required'));
         }
         const trimmed = String(rawVideoUrl).trim();
         const preserveIsReel =
@@ -244,7 +250,7 @@ export default function PostForm() {
         const inferredIsReel = inferIsReelFromVideoUrl(trimmed);
         if (extractYouTubeVideoId(trimmed)) {
           const normalizedVideoUrl = normalizeYouTubeUrl(trimmed);
-          if (!normalizedVideoUrl) throw new Error('Invalid YouTube video URL');
+          if (!normalizedVideoUrl) throw new Error(t('invalid_youtube_url'));
           postData.video_url = normalizedVideoUrl;
           postData.is_reel = inferredIsReel
             ? true
@@ -259,7 +265,7 @@ export default function PostForm() {
           postData.video_height = null;
           delete postData.video_thumbnail;
         } else {
-          throw new Error('Invalid video URL');
+          throw new Error(t('invalid_video_url'));
         }
       }
 
@@ -287,7 +293,7 @@ export default function PostForm() {
             .select('*')
             .maybeSingle();
           if (error) throw error;
-          if (!data) throw new Error('Post update returned no data');
+          if (!data) throw new Error(t('unexpected_error'));
         } else {
           const { data, error } = await supabase
             .from('posts')
@@ -295,7 +301,7 @@ export default function PostForm() {
             .select('*')
             .maybeSingle();
           if (error) throw error;
-          if (!data) throw new Error('Post insert returned no data');
+          if (!data) throw new Error(t('unexpected_error'));
         }
       };
 
@@ -322,7 +328,8 @@ export default function PostForm() {
       toast.success(t('success'));
       navigate('/admin/posts');
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error) || t('error'));
+      console.error(error);
+      toast.error(t('error'));
     } finally {
       setLoading(false);
     }
@@ -339,7 +346,7 @@ export default function PostForm() {
   return (
     <div className="max-w-5xl">
       <Button variant="ghost" onClick={() => navigate('/admin/posts')} className="mb-6">
-        <ArrowLeft className="w-4 h-4 mr-2" />
+        {isRTL ? <ArrowRight className="w-4 h-4 ml-2" /> : <ArrowLeft className="w-4 h-4 mr-2" />}
         {t('posts')}
       </Button>
 
@@ -517,7 +524,7 @@ export default function PostForm() {
                       <SelectContent>
                         {CONTENT_TYPES.map((ct) => (
                           <SelectItem key={ct} value={ct}>
-                            {ct}
+                            {t(ct)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -534,7 +541,7 @@ export default function PostForm() {
                   <FormItem className="flex items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
                       <FormLabel>{t('is_breaking')}</FormLabel>
-                      <FormDescription>Show as breaking news</FormDescription>
+                      <FormDescription>{t('show_as_breaking_news')}</FormDescription>
                     </div>
                     <FormControl>
                       <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -550,7 +557,7 @@ export default function PostForm() {
                     {imagePreview && (
                       <img
                         src={imagePreview}
-                        alt="Preview"
+                        alt={t('preview_image')}
                         className="w-full max-w-md h-48 object-cover rounded-lg"
                       />
                     )}
@@ -569,7 +576,7 @@ export default function PostForm() {
                         onClick={() => document.getElementById('image-upload')?.click()}
                         disabled={uploading}
                       >
-                        <Upload className="w-4 h-4 mr-2" />
+                        <Upload className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                         {uploading ? t('loading') : t('image')}
                       </Button>
                     </div>
@@ -584,7 +591,7 @@ export default function PostForm() {
                     name="video_url"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Video URL</FormLabel>
+                        <FormLabel>{t('video_url')}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -598,7 +605,7 @@ export default function PostForm() {
                   />
 
                   <div>
-                    <FormLabel>Thumbnail preview</FormLabel>
+                    <FormLabel>{t('thumbnail_preview')}</FormLabel>
                     <div className="mt-2 space-y-4">
                       {videoUrl ? (
                         (() => {
@@ -607,7 +614,7 @@ export default function PostForm() {
                             return (
                               <img
                                 src={thumb}
-                                alt="Video thumbnail preview"
+                                alt={t('video_thumbnail_preview')}
                                 className="w-full max-w-md h-48 object-cover rounded-lg"
                                 loading="lazy"
                               />
@@ -623,44 +630,44 @@ export default function PostForm() {
                               />
                             );
                           }
-                          return <div className="text-sm text-muted-foreground">Paste a valid video URL.</div>;
+                          return <div className="text-sm text-muted-foreground">{t('paste_valid_video_url')}</div>;
                         })()
                       ) : (
-                        <div className="text-sm text-muted-foreground">Paste a video URL to see the thumbnail.</div>
+                        <div className="text-sm text-muted-foreground">{t('paste_video_url_to_thumbnail')}</div>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <FormLabel>Preview</FormLabel>
+                    <FormLabel>{t('preview')}</FormLabel>
                     <div className="mt-2">
                       {videoUrl && canPlayVideoUrl(videoUrl) ? (
                         <ResponsiveVideoPlayer
                           videoUrl={videoUrl}
-                          title="Video preview"
+                          title={t('video_preview_title')}
                           reel={{
                             video_url: videoUrl,
                             is_reel: previewIsReel,
                           }}
                         />
                       ) : videoUrl ? (
-                        <div className="text-sm text-muted-foreground">Invalid video URL.</div>
+                        <div className="text-sm text-muted-foreground">{t('invalid_video_url')}</div>
                       ) : (
-                        <div className="text-sm text-muted-foreground">Set a video URL.</div>
+                        <div className="text-sm text-muted-foreground">{t('set_video_url')}</div>
                       )}
                     </div>
                   </div>
 
                   {videoUrl && (
                     <div className="text-sm text-muted-foreground">
-                      Detected:{' '}
+                      {t('detected')}{' '}
                       {extractYouTubeVideoId(videoUrl as string)
                         ? previewIsReel
-                          ? 'YouTube Shorts (reel)'
-                          : 'YouTube'
+                          ? t('youtube_shorts')
+                          : t('youtube')
                         : isDirectVideoUrl(videoUrl as string)
-                          ? 'Direct file'
-                          : 'Invalid'}
+                          ? t('direct_file')
+                          : t('invalid')}
                     </div>
                   )}
                 </div>

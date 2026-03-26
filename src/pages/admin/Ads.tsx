@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, type Ad, type AdPlacement, type AdStatus } from '@/lib/supabase';
-import { getErrorMessage } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { canPlayVideoUrl } from '@/lib/videoDisplay';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,22 +30,23 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 
-const placementLabels: Partial<Record<AdPlacement, string>> = {
-  header_banner: 'Header banner',
-  sidebar: 'Sidebar',
-  between_articles: 'Between articles',
-  article: 'In article',
-};
-
-function getPlacementLabel(placement: string): string {
-  return (placementLabels as Record<string, string>)[placement] ?? placement;
-}
-
 export default function AdsAdmin() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const getPlacementLabel = (placement: AdPlacement | string): string => {
+    const keyByPlacement: Partial<Record<AdPlacement, string>> = {
+      header_banner: 'placement_header_banner',
+      sidebar: 'placement_sidebar',
+      between_articles: 'placement_between_articles',
+      article: 'placement_article',
+    };
+    const key = keyByPlacement[placement as AdPlacement];
+    return key ? t(key) : String(placement);
+  };
 
   useEffect(() => {
     fetchAds();
@@ -63,7 +64,8 @@ export default function AdsAdmin() {
       if (error) throw error;
       setAds((data ?? []) as Ad[]);
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || t('error'));
+      console.error(err);
+      toast.error(t('error'));
     } finally {
       setLoading(false);
     }
@@ -76,7 +78,8 @@ export default function AdsAdmin() {
       toast.success(t('success'));
       fetchAds();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || t('error'));
+      console.error(err);
+      toast.error(t('error'));
     }
   };
 
@@ -96,7 +99,8 @@ export default function AdsAdmin() {
       toast.success(t('success'));
       fetchAds();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || t('error'));
+      console.error(err);
+      toast.error(t('error'));
     } finally {
       setTogglingId(null);
     }
@@ -112,14 +116,14 @@ export default function AdsAdmin() {
     if (canPlayVideoUrl(url)) {
       return (
         <div className="w-24 h-14 bg-black rounded object-cover flex items-center justify-center text-white/70 text-xs">
-          Video
+          {t('video')}
         </div>
       );
     }
     return (
       <img
         src={url}
-        alt={ad.title ?? 'Advertisement'}
+        alt={ad.title ?? t('advertisements')}
         className="w-24 h-14 rounded object-cover border bg-muted/30"
         loading="lazy"
       />
@@ -129,11 +133,11 @@ export default function AdsAdmin() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Advertisements</h1>
+        <h1 className="text-3xl font-bold">{t('advertisements')}</h1>
         <Button asChild>
           <Link to="/admin/ads/new">
-            <Plus className="w-4 h-4 mr-2" />
-            Add advertisement
+            <Plus className={cn('w-4 h-4', isRTL ? 'ml-2' : 'mr-2')} />
+            {t('add_advertisement')}
           </Link>
         </Button>
       </div>
@@ -141,19 +145,19 @@ export default function AdsAdmin() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <div className="p-6 text-muted-foreground">Loading…</div>
+            <div className="p-6 text-muted-foreground">{t('loading_ads')}</div>
           ) : ads.length === 0 ? (
-            <div className="p-6 text-muted-foreground">No advertisements found.</div>
+            <div className="p-6 text-muted-foreground">{t('no_advertisements_found')}</div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[180px]">Title</TableHead>
-                  <TableHead>Placement</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Media</TableHead>
-                  <TableHead className="min-w-[220px]">Link</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="min-w-[180px]">{t('ad_title')}</TableHead>
+                  <TableHead>{t('placement')}</TableHead>
+                  <TableHead>{t('ad_status')}</TableHead>
+                  <TableHead>{t('media')}</TableHead>
+                  <TableHead className="min-w-[220px]">{t('link_url')}</TableHead>
+                  <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -165,12 +169,12 @@ export default function AdsAdmin() {
                     <TableCell>{getPlacementLabel(ad.placement)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Badge variant={statusBadgeVariant(ad.status)}>{ad.status}</Badge>
+                        <Badge variant={statusBadgeVariant(ad.status)}>{t(ad.status)}</Badge>
                         <Switch
                           checked={ad.status === 'active'}
                           onCheckedChange={() => handleToggle(ad)}
                           disabled={togglingId === ad.id}
-                          aria-label="Toggle ad status"
+                          aria-label={t('toggle_ad_status')}
                         />
                       </div>
                     </TableCell>
@@ -183,7 +187,7 @@ export default function AdsAdmin() {
                           rel="noreferrer"
                           className="text-primary hover:underline"
                         >
-                          Open link
+                          {t('open_link')}
                         </a>
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -206,7 +210,7 @@ export default function AdsAdmin() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>{t('confirm_delete')}</AlertDialogTitle>
                               <AlertDialogDescription>
-                                {ad.title ?? 'Advertisement'}
+                                {ad.title ?? t('advertisements')}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

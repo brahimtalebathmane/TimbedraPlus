@@ -26,7 +26,7 @@ import {
 import { supabase, Post } from '@/lib/supabase';
 import { formatDate } from '@/lib/helpers';
 import { toast } from 'sonner';
-import { getErrorMessage } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { CategoryIcon } from '@/components/CategoryIcon';
 
 export default function Posts() {
@@ -53,7 +53,8 @@ export default function Posts() {
       toast.success(t('success'));
       fetchPosts();
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error) || t('error'));
+      console.error(error);
+      toast.error(t('error'));
     }
   };
 
@@ -72,7 +73,7 @@ export default function Posts() {
         <h1 className="text-3xl font-bold">{t('posts')}</h1>
         <Button asChild>
           <Link to="/admin/posts/new">
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className={cn('w-4 h-4', isRTL ? 'ml-2' : 'mr-2')} />
             {t('add_post')}
           </Link>
         </Button>
@@ -87,7 +88,7 @@ export default function Posts() {
               <TableHead>{t('status')}</TableHead>
               <TableHead>{t('content_type')}</TableHead>
               <TableHead>{t('published_at')}</TableHead>
-              <TableHead className="text-right">{t('categories')}</TableHead>
+              <TableHead className="text-right">{t('actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -110,7 +111,7 @@ export default function Posts() {
                   )}
                 </TableCell>
                 <TableCell>{getStatusBadge(post.status)}</TableCell>
-                <TableCell>{post.content_type}</TableCell>
+                <TableCell>{t(post.content_type)}</TableCell>
                 <TableCell>{formatDate(post.created_at, i18n.language)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

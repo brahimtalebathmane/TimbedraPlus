@@ -5,9 +5,11 @@ import { FileText, FolderOpen, Video, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
 
 export default function Dashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const [stats, setStats] = useState({
     posts: 0,
     categories: 0,
@@ -74,8 +76,8 @@ export default function Dashboard() {
               <div className="text-3xl font-bold mb-2">{card.value}</div>
               <Button variant="link" className="px-0" asChild>
                 <Link to={card.href}>
-                  <Eye className="w-4 h-4 mr-1" />
-                  {t('all_categories')}
+                  <Eye className={cn('w-4 h-4', isRTL ? 'ml-1' : 'mr-1')} />
+                  {t('view_all')}
                 </Link>
               </Button>
             </CardContent>

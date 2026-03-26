@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Trash2, Pencil, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, Video } from '@/lib/supabase';
-import { getErrorMessage } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -30,7 +30,8 @@ import { Badge } from '@/components/ui/badge';
 import { effectiveIsReel } from '@/lib/videoDisplay';
 
 export default function VideosAdmin() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const [videos, setVideos] = useState<Video[]>([]);
 
   useEffect(() => {
@@ -54,7 +55,8 @@ export default function VideosAdmin() {
       toast.success(t('success'));
       fetchVideos();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || t('error'));
+      console.error(err);
+      toast.error(t('error'));
     }
   };
 
@@ -64,8 +66,8 @@ export default function VideosAdmin() {
         <h1 className="text-3xl font-bold">{t('videos')}</h1>
         <Button asChild>
           <Link to="/admin/videos/new">
-            <Plus className="w-4 h-4 mr-2" />
-            Add video
+            <Plus className={cn('w-4 h-4', isRTL ? 'ml-2' : 'mr-2')} />
+            {t('add_video')}
           </Link>
         </Button>
       </div>
@@ -77,9 +79,9 @@ export default function VideosAdmin() {
               <TableRow>
                 <TableHead>{t('title_ar')}</TableHead>
                 <TableHead>{t('title_fr')}</TableHead>
-                <TableHead>Video URL</TableHead>
+                <TableHead>{t('video_url')}</TableHead>
                 <TableHead>{t('reel')}</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

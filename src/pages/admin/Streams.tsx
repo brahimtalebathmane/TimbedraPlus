@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getErrorMessage } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +31,8 @@ import {
 } from '@/components/ui/table';
 
 export default function StreamsAdmin() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === 'ar' ? 'ar' : 'fr';
 
   const [streams, setStreams] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +81,7 @@ export default function StreamsAdmin() {
     const normalizedVideoUrl = normalizeYouTubeUrl(videoUrl.trim());
     const videoId = extractYouTubeVideoId(videoUrl.trim());
     if (!normalizedVideoUrl || !videoId) {
-      toast.error('Invalid YouTube URL');
+      toast.error(t('invalid_youtube_url'));
       return;
     }
 
@@ -115,7 +115,8 @@ export default function StreamsAdmin() {
       resetForm();
       await fetchStreams();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || t('error'));
+      console.error(err);
+      toast.error(t('error'));
     }
   };
 
@@ -134,36 +135,41 @@ export default function StreamsAdmin() {
       if (editingId === id) resetForm();
       await fetchStreams();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || t('error'));
+      console.error(err);
+      toast.error(t('error'));
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Live Streams</h1>
+        <h1 className="text-3xl font-bold">{t('live_streams')}</h1>
         {editingId && (
           <Button variant="outline" onClick={resetForm}>
-            Cancel
+            {t('cancel')}
           </Button>
         )}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{editingId ? 'Edit stream' : 'Add stream'}</CardTitle>
+          <CardTitle>{editingId ? t('edit_stream') : t('add_stream')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <div className="text-sm text-muted-foreground mb-2">Title</div>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Stream title" />
+              <div className="text-sm text-muted-foreground mb-2">{t('stream_title')}</div>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={t('stream_title_placeholder')}
+              />
             </div>
             <div className="flex items-end">
               <div className="w-full flex items-center justify-between rounded-lg border p-4">
                 <div>
-                  <div className="text-sm font-medium">Active</div>
-                  <div className="text-xs text-muted-foreground">Show as active stream</div>
+                  <div className="text-sm font-medium">{t('stream_active')}</div>
+                  <div className="text-xs text-muted-foreground">{t('stream_active_hint')}</div>
                 </div>
                 <Switch checked={isActive} onCheckedChange={setIsActive} />
               </div>
@@ -171,18 +177,18 @@ export default function StreamsAdmin() {
           </div>
 
           <div>
-            <div className="text-sm text-muted-foreground mb-2">Video URL</div>
+            <div className="text-sm text-muted-foreground mb-2">{t('stream_video_url')}</div>
             <Textarea
               value={videoUrl}
               onChange={(e) => setVideoUrl(e.target.value)}
               rows={3}
-                placeholder="YouTube watch/embed/shorts URL"
+              placeholder={t('stream_video_url_placeholder')}
             />
           </div>
 
           <div className="flex gap-4">
             <Button type="button" onClick={handleSubmit}>
-              {editingId ? 'Save changes' : 'Add stream'}
+              {editingId ? t('save') : t('add_stream')}
             </Button>
             <Button type="button" variant="outline" onClick={resetForm}>
               {t('cancel')}
@@ -193,20 +199,20 @@ export default function StreamsAdmin() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Streams list</CardTitle>
+          <CardTitle>{t('streams_list')}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="p-6 text-muted-foreground">Loading...</div>
+            <div className="p-6 text-muted-foreground">{t('loading')}</div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Video URL</TableHead>
-                  <TableHead>Started</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('stream_title')}</TableHead>
+                  <TableHead>{t('video_url')}</TableHead>
+                  <TableHead>{t('started')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -214,9 +220,9 @@ export default function StreamsAdmin() {
                   <TableRow key={s.id}>
                     <TableCell className="max-w-xs truncate">{s.title}</TableCell>
                     <TableCell className="max-w-xs truncate">{s.video_url}</TableCell>
-                    <TableCell>{new Date(s.started_at).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(s.started_at).toLocaleDateString(locale)}</TableCell>
                     <TableCell>
-                      {s.is_active ? <Badge>Active</Badge> : <Badge variant="secondary">Past</Badge>}
+                      {s.is_active ? <Badge>{t('active')}</Badge> : <Badge variant="secondary">{t('past')}</Badge>}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

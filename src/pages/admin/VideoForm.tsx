@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { extractYouTubeVideoId, getYouTubeThumbnailUrl, normalizeYouTubeUrl } from '@/lib/helpers';
@@ -24,23 +24,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { getErrorMessage } from '@/lib/utils';
 
-const videoSchema = z.object({
-  title_ar: z.string().min(2),
-  title_fr: z.string().min(2),
-  video_url: z
-    .string()
-    .min(2)
-    .refine((val) => !!extractYouTubeVideoId(val), {
-      message: 'Please provide a valid YouTube URL',
-    }),
-});
+function createVideoSchema(t: (key: string) => string) {
+  return z.object({
+    title_ar: z.string().min(2),
+    title_fr: z.string().min(2),
+    video_url: z
+      .string()
+      .min(2)
+      .refine((val) => !!extractYouTubeVideoId(val), {
+        message: t('invalid_youtube_url'),
+      }),
+  });
+}
 
-type VideoFormValues = z.infer<typeof videoSchema>;
+type VideoFormValues = z.infer<ReturnType<typeof createVideoSchema>>;
 
 export default function VideoForm() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
+  const isRTL = i18n.language === 'ar';
 
   const [loading, setLoading] = useState(false);
   // Preserve `is_reel` during edits: we normalize YouTube URLs to watch URLs,
@@ -49,7 +52,7 @@ export default function VideoForm() {
   const [initialIsReel, setInitialIsReel] = useState<boolean | null>(null);
 
   const form = useForm<VideoFormValues>({
-    resolver: zodResolver(videoSchema),
+    resolver: zodResolver(createVideoSchema(t)),
     defaultValues: {
       title_ar: '',
       title_fr: '',
@@ -79,7 +82,8 @@ export default function VideoForm() {
           });
         }
       } catch (err: unknown) {
-        toast.error(getErrorMessage(err) || t('error'));
+        console.error(err);
+        toast.error(t('error'));
       } finally {
         setLoading(false);
       }
@@ -96,11 +100,11 @@ export default function VideoForm() {
       const normalizedVideoUrl = normalizeYouTubeUrl(rawInput);
       const videoId = normalizedVideoUrl ? extractYouTubeVideoId(normalizedVideoUrl) : null;
       if (!normalizedVideoUrl || !videoId) {
-        throw new Error('Invalid YouTube URL');
+        throw new Error(t('invalid_youtube_url'));
       }
 
       const thumbnail = getYouTubeThumbnailUrl(normalizedVideoUrl);
-      if (!thumbnail) throw new Error('Unable to generate YouTube thumbnail');
+      if (!thumbnail) throw new Error(t('youtube_thumbnail_failed'));
 
       const preserveIsReel =
         id && id !== 'new' && initialVideoUrl != null && rawInput === initialVideoUrl;
@@ -124,7 +128,7 @@ export default function VideoForm() {
             .select('*')
             .maybeSingle();
           if (error) throw error;
-          if (!data) throw new Error('Video update returned no data');
+          if (!data) throw new Error(t('unexpected_error'));
         } else {
           const { data, error } = await supabase
             .from('videos')
@@ -132,7 +136,7 @@ export default function VideoForm() {
             .select('*')
             .maybeSingle();
           if (error) throw error;
-          if (!data) throw new Error('Video insert returned no data');
+          if (!data) throw new Error(t('unexpected_error'));
         }
       };
 
@@ -156,7 +160,8 @@ export default function VideoForm() {
       toast.success(t('success'));
       navigate('/admin/videos');
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || t('error'));
+      console.error(err);
+      toast.error(t('error'));
     } finally {
       setLoading(false);
     }
@@ -174,12 +179,12 @@ export default function VideoForm() {
   return (
     <div className="max-w-3xl">
       <Button variant="ghost" onClick={() => navigate('/admin/videos')} className="mb-6">
-        <ArrowLeft className="w-4 h-4 mr-2" />
+        {isRTL ? <ArrowRight className="w-4 h-4 ml-2" /> : <ArrowLeft className="w-4 h-4 mr-2" />}
         {t('videos')}
       </Button>
 
       <h1 className="text-3xl font-bold mb-6">
-        {id && id !== 'new' ? t('edit_post') : 'Add Video'}
+        {id && id !== 'new' ? t('edit_video') : t('add_video')}
       </h1>
 
       <Form {...form}>
@@ -228,7 +233,7 @@ export default function VideoForm() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Video</CardTitle>
+              <CardTitle>{t('video_section')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <FormField
@@ -236,7 +241,7 @@ export default function VideoForm() {
                 name="video_url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Video URL</FormLabel>
+                    <FormLabel>{t('video_url')}</FormLabel>
                     <FormControl>
                       <Textarea {...field} rows={3} placeholder="https://www.youtube.com/watch?v=VIDEO_ID" />
                     </FormControl>
@@ -246,35 +251,37 @@ export default function VideoForm() {
               />
 
               <div>
-                <FormLabel>Thumbnail preview</FormLabel>
+                <FormLabel>{t('thumbnail_preview')}</FormLabel>
                 <div className="mt-2 space-y-4">
                   {thumbnailPreview ? (
                     <img
                       src={thumbnailPreview}
-                      alt="YouTube thumbnail preview"
+                      alt={t('youtube_thumbnail_preview')}
                       className="w-full max-w-md h-48 object-cover rounded-lg"
                     />
                   ) : (
                     <div className="text-sm text-muted-foreground">
-                      Paste a valid YouTube URL to see the thumbnail preview.
+                      {t('paste_valid_youtube_to_preview')}
                     </div>
                   )}
                 </div>
               </div>
 
               <div>
-                <FormLabel>Preview</FormLabel>
+                <FormLabel>{t('preview')}</FormLabel>
                 <div className="mt-2">
                   {videoUrl && extractYouTubeVideoId(videoUrl) ? (
                     <ResponsiveVideoPlayer
                       videoUrl={videoUrl}
-                      title="Video preview"
+                      title={t('video_preview_title')}
                       reel={{ video_url: videoUrl, is_reel: previewIsReel }}
                     />
                   ) : videoUrl ? (
-                    <div className="p-4 text-sm text-muted-foreground rounded-lg border">Invalid YouTube URL.</div>
+                    <div className="p-4 text-sm text-muted-foreground rounded-lg border">
+                      {t('invalid_youtube_url_inline')}
+                    </div>
                   ) : (
-                    <div className="p-4 text-sm text-muted-foreground rounded-lg border">Set a YouTube video URL.</div>
+                    <div className="p-4 text-sm text-muted-foreground rounded-lg border">{t('set_youtube_url')}</div>
                   )}
                 </div>
               </div>

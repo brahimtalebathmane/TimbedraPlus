@@ -5,7 +5,7 @@ import { Eye, Copy } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
 import { extractYouTubeVideoId, formatDate, getVideoEmbedUrl } from '@/lib/helpers';
-import { getErrorMessage } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -144,6 +144,18 @@ export default function MediaLibrary() {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [filter, setFilter] = useState<'all' | 'images' | 'videos'>('all');
 
+  const labelType = (type: MediaType) => (type === 'image' ? t('images') : t('videos'));
+  const labelSource = (source: MediaSource) =>
+    source === 'storage'
+      ? t('media_source_storage')
+      : source === 'posts'
+        ? t('media_source_posts')
+        : source === 'videos'
+          ? t('media_source_videos')
+          : t('media_source_ads');
+
+  const isRTL = i18n.language === 'ar';
+
   const filteredItems = useMemo(() => {
     if (filter === 'images') return items.filter((i) => i.type === 'image');
     if (filter === 'videos') return items.filter((i) => i.type === 'video');
@@ -275,7 +287,8 @@ export default function MediaLibrary() {
 
         setItems(media);
       } catch (error: unknown) {
-        toast.error(getErrorMessage(error) || t('error'));
+        console.error(error);
+        toast.error(t('error'));
       } finally {
         setLoading(false);
       }
@@ -294,7 +307,8 @@ export default function MediaLibrary() {
       await navigator.clipboard.writeText(item.url);
       toast.success(t('success'));
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error) || t('error'));
+      console.error(error);
+      toast.error(t('error'));
     }
   };
 
@@ -302,21 +316,21 @@ export default function MediaLibrary() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Media Library</h1>
-          <p className="text-muted-foreground mt-1">All uploaded images + linked videos (admin).</p>
+          <h1 className="text-3xl font-bold">{t('media_library')}</h1>
+          <p className="text-muted-foreground mt-1">{t('media_library_subtitle')}</p>
         </div>
       </div>
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
         <TabsList className="w-full justify-start">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="images">Images</TabsTrigger>
-          <TabsTrigger value="videos">Videos</TabsTrigger>
+          <TabsTrigger value="all">{t('all')}</TabsTrigger>
+          <TabsTrigger value="images">{t('images')}</TabsTrigger>
+          <TabsTrigger value="videos">{t('videos_tab')}</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {loading ? (
-        <div className="p-6 text-muted-foreground">Loading media…</div>
+        <div className="p-6 text-muted-foreground">{t('loading_media')}</div>
       ) : filteredItems.length === 0 ? (
         <div className="p-6 text-muted-foreground">{t('no_results')}</div>
       ) : (
@@ -347,7 +361,7 @@ export default function MediaLibrary() {
                       </div>
                     ) : (
                       <div className="w-full h-56 flex items-center justify-center bg-black text-white/80 text-sm p-4 text-center">
-                        Video preview unavailable
+                        {t('video_preview_unavailable')}
                       </div>
                     )}
                   </div>
@@ -357,7 +371,7 @@ export default function MediaLibrary() {
                       <div className="min-w-0">
                         <div className="text-sm font-medium truncate">{item.fileName}</div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {item.type} · {item.source}
+                          {labelType(item.type)} · {labelSource(item.source)}
                         </div>
                         {item.created_at ? (
                           <div className="text-xs text-muted-foreground mt-1">
@@ -365,17 +379,22 @@ export default function MediaLibrary() {
                           </div>
                         ) : null}
                       </div>
-                      <Badge variant="outline">{item.type}</Badge>
+                      <Badge variant="outline">{labelType(item.type)}</Badge>
                     </div>
 
                     <div className="flex gap-2">
                       <Button variant="secondary" size="sm" className="flex-1" onClick={() => handleView(item)}>
-                        <Eye className="w-4 h-4 mr-2" />
-                        View
+                        <Eye className={cn('w-4 h-4', isRTL ? 'ml-2' : 'mr-2')} />
+                        {t('view')}
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleCopyUrl(item)} aria-label="Copy URL">
-                        <Copy className="w-4 h-4 mr-2" />
-                        Copy URL
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCopyUrl(item)}
+                        aria-label={t('copy_url_aria')}
+                      >
+                        <Copy className={cn('w-4 h-4', isRTL ? 'ml-2' : 'mr-2')} />
+                        {t('copy_url')}
                       </Button>
                     </div>
                   </div>

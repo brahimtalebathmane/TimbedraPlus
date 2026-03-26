@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { supabase, ContactInfo } from '@/lib/supabase';
-import { getErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -46,7 +45,8 @@ export default function ContactSettings() {
       try {
         await fetchRow();
       } catch (err: unknown) {
-        toast.error(getErrorMessage(err) || t('error'));
+        console.error(err);
+        toast.error(t('error'));
       } finally {
         setLoading(false);
       }
@@ -97,20 +97,21 @@ export default function ContactSettings() {
       toast.success(t('success'));
       await fetchRow();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || t('error'));
+      console.error(err);
+      toast.error(t('error'));
     }
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">{t('contact')}</h1>
+      <h1 className="text-3xl font-bold">{t('contact_settings')}</h1>
       <Card>
         <CardHeader>
-          <CardTitle>Edit contact & social links</CardTitle>
+          <CardTitle>{t('edit_contact_social_links')}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="p-6 text-muted-foreground">Loading...</div>
+            <div className="p-6 text-muted-foreground">{t('loading')}</div>
           ) : (
             <div className="grid md:grid-cols-2 gap-4">
               <div>
@@ -118,40 +119,40 @@ export default function ContactSettings() {
                 <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('email')} />
               </div>
               <div>
-                <div className="text-sm text-muted-foreground mb-2">Phone</div>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" />
+                <div className="text-sm text-muted-foreground mb-2">{t('phone')}</div>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('phone_placeholder')} />
               </div>
               <div>
-                <div className="text-sm text-muted-foreground mb-2">WhatsApp</div>
-                <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="WhatsApp number or link" />
+                <div className="text-sm text-muted-foreground mb-2">{t('whatsapp')}</div>
+                <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder={t('whatsapp_placeholder')} />
               </div>
               <div>
-                <div className="text-sm text-muted-foreground mb-2">Facebook</div>
-                <Input value={facebook} onChange={(e) => setFacebook(e.target.value)} placeholder="Facebook page URL" />
+                <div className="text-sm text-muted-foreground mb-2">{t('facebook')}</div>
+                <Input value={facebook} onChange={(e) => setFacebook(e.target.value)} placeholder={t('facebook_placeholder')} />
               </div>
               <div>
-                <div className="text-sm text-muted-foreground mb-2">Twitter</div>
-                <Input value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="Twitter URL" />
+                <div className="text-sm text-muted-foreground mb-2">{t('twitter')}</div>
+                <Input value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder={t('twitter_placeholder')} />
               </div>
               <div>
-                <div className="text-sm text-muted-foreground mb-2">Instagram</div>
-                <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="Instagram URL" />
+                <div className="text-sm text-muted-foreground mb-2">{t('instagram')}</div>
+                <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder={t('instagram_placeholder')} />
               </div>
               <div className="md:col-span-2">
-                <div className="text-sm text-muted-foreground mb-2">YouTube</div>
-                <Textarea value={youtube} onChange={(e) => setYoutube(e.target.value)} rows={2} placeholder="YouTube channel/video URL" />
+                <div className="text-sm text-muted-foreground mb-2">{t('youtube')}</div>
+                <Textarea value={youtube} onChange={(e) => setYoutube(e.target.value)} rows={2} placeholder={t('youtube_placeholder')} />
               </div>
               <div>
-                <div className="text-sm text-muted-foreground mb-2">LinkedIn</div>
-                <Input value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="LinkedIn URL" />
+                <div className="text-sm text-muted-foreground mb-2">{t('linkedin')}</div>
+                <Input value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder={t('linkedin_placeholder')} />
               </div>
               <div>
-                <div className="text-sm text-muted-foreground mb-2">Snapchat</div>
-                <Input value={snapchat} onChange={(e) => setSnapchat(e.target.value)} placeholder="Snapchat URL or username link" />
+                <div className="text-sm text-muted-foreground mb-2">{t('snapchat')}</div>
+                <Input value={snapchat} onChange={(e) => setSnapchat(e.target.value)} placeholder={t('snapchat_placeholder')} />
               </div>
               <div className="md:col-span-2">
-                <div className="text-sm text-muted-foreground mb-2">TikTok</div>
-                <Input value={tiktok} onChange={(e) => setTiktok(e.target.value)} placeholder="TikTok URL" />
+                <div className="text-sm text-muted-foreground mb-2">{t('tiktok')}</div>
+                <Input value={tiktok} onChange={(e) => setTiktok(e.target.value)} placeholder={t('tiktok_placeholder')} />
               </div>
 
               <div className="md:col-span-2 flex gap-4">
