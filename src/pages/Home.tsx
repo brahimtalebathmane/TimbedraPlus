@@ -5,7 +5,6 @@ import { Helmet } from 'react-helmet-async';
 import { Clock, TrendingUp, Music2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import AdSlot from '@/components/Ads/AdSlot';
 import {
