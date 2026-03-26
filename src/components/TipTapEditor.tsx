@@ -43,7 +43,7 @@ export default function TipTapEditor({ content, onChange }: TipTapEditorProps) {
       // Some TipTap versions include a `link` extension inside StarterKit.
       // We also add `@tiptap/extension-link`, so disable StarterKit's `link`
       // to prevent the duplicate extension warning.
-      StarterKit.configure({ link: false } as any),
+      StarterKit.configure({ link: false }),
       Image.configure({
         inline: true,
         allowBase64: true,

@@ -80,7 +80,10 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur border-b border-border shadow-sm">
+      <header
+        className="sticky z-50 bg-background/90 backdrop-blur border-b border-border shadow-sm"
+        style={{ top: 'var(--ticker-h, 0px)' }}
+      >
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link to={`/${currentLang}`} className="flex items-center gap-3">

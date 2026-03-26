@@ -151,6 +151,21 @@ export type LiveStream = {
   updated_at: string;
 };
 
+export type TickerSource = 'breaking' | 'latest' | 'category';
+
+export type TickerSettings = {
+  id: string;
+  enabled: boolean;
+  source: TickerSource;
+  category_id: string | null;
+  item_limit: number;
+  speed_seconds: number;
+  autoplay: boolean;
+  show_arrows: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export const AD_PLACEMENTS = ['header_banner', 'sidebar', 'between_articles', 'article'] as const;
 export type AdPlacement = (typeof AD_PLACEMENTS)[number];
 

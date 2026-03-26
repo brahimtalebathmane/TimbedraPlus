@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Header from './components/Header';
+import BreakingTicker from './components/BreakingTicker';
 import ProtectedRoute from './components/ProtectedRoute';
 import Footer from './components/Footer';
 
@@ -28,6 +29,7 @@ const UsersAdmin = lazy(() => import('./pages/admin/Users'));
 const MediaLibrary = lazy(() => import('./pages/admin/MediaLibrary'));
 const AdsAdmin = lazy(() => import('./pages/admin/Ads'));
 const AdForm = lazy(() => import('./pages/admin/AdForm'));
+const TickerSettingsAdmin = lazy(() => import('./pages/admin/TickerSettings'));
 
 function LoadingFallback() {
   return (
@@ -38,8 +40,13 @@ function LoadingFallback() {
 }
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
+  const [tickerEnabled, setTickerEnabled] = useState(true);
   return (
-    <div className="min-h-screen flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ ['--ticker-h' as never]: tickerEnabled ? '36px' : '0px' }}
+    >
+      <BreakingTicker onEnabledChange={setTickerEnabled} heightPx={36} />
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />
@@ -164,6 +171,7 @@ function App() {
             <Route path="videos/:id" element={<VideoForm />} />
             <Route path="streams" element={<StreamsAdmin />} />
             <Route path="contact-settings" element={<ContactSettingsAdmin />} />
+            <Route path="ticker" element={<TickerSettingsAdmin />} />
             <Route path="comments" element={<CommentsAdmin />} />
             <Route path="users" element={<UsersAdmin />} />
           </Route>

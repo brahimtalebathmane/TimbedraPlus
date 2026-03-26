@@ -196,5 +196,23 @@
   "detected": "تم التعرف:",
   "youtube_shorts": "YouTube Shorts (ريل)",
   "youtube": "YouTube",
-  "direct_file": "ملف مباشر"
+  "direct_file": "ملف مباشر",
+
+  "ticker_settings": "شريط الأخبار العاجلة",
+  "ticker_settings_subtitle": "تحكم في عرض شريط الأخبار المتحرك أعلى الموقع.",
+  "ticker_enabled": "تفعيل الشريط",
+  "ticker_enabled_hint": "إظهار/إخفاء شريط الأخبار العاجلة أعلى الهيدر.",
+  "ticker_source": "مصدر الأخبار",
+  "ticker_source_breaking": "الأخبار العاجلة فقط",
+  "ticker_source_latest": "آخر الأخبار",
+  "ticker_source_category": "قسم محدد",
+  "ticker_category": "القسم",
+  "ticker_choose_category": "اختر القسم",
+  "ticker_item_limit": "عدد العناوين",
+  "ticker_autoplay": "تشغيل تلقائي",
+  "ticker_autoplay_hint": "تحريك العناوين تلقائيًا بشكل مستمر.",
+  "ticker_show_arrows": "إظهار الأسهم",
+  "ticker_show_arrows_hint": "عرض أزرار يمين/يسار للتنقل اليدوي.",
+  "ticker_speed": "سرعة الحركة",
+  "ticker_speed_hint": "عدد الثواني لإكمال دورة كاملة (قيمة أكبر = أبطأ)."
 }

@@ -86,5 +86,23 @@
   "latest_reports": "Derniers rapports",
   "infographics": "Infographies",
   "follow_tiktok": "Suivez-nous sur TikTok",
-  "follow_now": "Suivre maintenant"
+  "follow_now": "Suivre maintenant",
+
+  "ticker_settings": "Bandeau d’alerte",
+  "ticker_settings_subtitle": "Contrôlez le bandeau d’actualités défilantes en haut du site.",
+  "ticker_enabled": "Activer le bandeau",
+  "ticker_enabled_hint": "Afficher/masquer le bandeau d’alerte au-dessus de l’en-tête.",
+  "ticker_source": "Source",
+  "ticker_source_breaking": "Dernière minute",
+  "ticker_source_latest": "Dernières actualités",
+  "ticker_source_category": "Catégorie",
+  "ticker_category": "Catégorie",
+  "ticker_choose_category": "Choisir une catégorie",
+  "ticker_item_limit": "Nombre de titres",
+  "ticker_autoplay": "Lecture automatique",
+  "ticker_autoplay_hint": "Faire défiler les titres en continu.",
+  "ticker_show_arrows": "Afficher les flèches",
+  "ticker_show_arrows_hint": "Afficher des boutons gauche/droite pour naviguer.",
+  "ticker_speed": "Vitesse",
+  "ticker_speed_hint": "Secondes par boucle complète (plus grand = plus lent)."
 }
