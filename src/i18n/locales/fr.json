@@ -110,5 +110,25 @@
   "ticker_show_arrows": "Afficher les flèches",
   "ticker_show_arrows_hint": "Afficher des boutons gauche/droite pour naviguer.",
   "ticker_speed": "Vitesse",
-  "ticker_speed_hint": "Secondes par boucle complète (plus grand = plus lent)."
+  "ticker_speed_hint": "Secondes par boucle complète (plus grand = plus lent).",
+
+  "analytics_section_title": "Statistiques",
+  "analytics_filter_today": "Aujourd'hui",
+  "analytics_filter_7d": "7 derniers jours",
+  "analytics_filter_30d": "30 derniers jours",
+  "analytics_unique_visitors": "Visiteurs uniques (estim.)",
+  "analytics_total_page_views": "Pages vues",
+  "analytics_period_hint": "Période sélectionnée",
+  "analytics_totals_hint": "Total sur le site",
+  "analytics_chart_visits_by_day": "Visites par jour",
+  "analytics_chart_views_mix": "Répartition (articles / vidéos / autres)",
+  "analytics_visits": "Visites",
+  "analytics_slice_article_pages": "Pages article",
+  "analytics_slice_video_plays": "Lectures vidéo",
+  "analytics_slice_other_visits": "Autres pages",
+  "analytics_top_categories": "Catégories les plus visitées",
+  "analytics_no_category_visits": "Aucune visite par catégorie sur cette période.",
+  "analytics_top_articles": "Articles les plus vus",
+  "analytics_top_videos": "Vidéos les plus vues",
+  "analytics_no_visit_mix": "Pas assez de données pour ce graphique sur la période."
 }

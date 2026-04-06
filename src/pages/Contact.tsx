@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase, ContactInfo } from '@/lib/supabase';
 import { getErrorMessage } from '@/lib/utils';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
+import { currentPageUrl, recordVisit } from '@/lib/analytics';
 
 function normalizeWhatsappLink(whatsapp: string) {
   const value = whatsapp.trim();
@@ -63,6 +64,10 @@ export default function Contact() {
       fetchContact();
     },
   });
+
+  useEffect(() => {
+    void recordVisit({ page_url: currentPageUrl(), content_type: 'page' }, ['page', 'contact', currentLang]);
+  }, [currentLang]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -12,6 +12,7 @@ import { supabase, Post } from '@/lib/supabase';
 import { formatRelativeTime, truncateText, getPostThumbnailUrl } from '@/lib/helpers';
 import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
 import { cn } from '@/lib/utils';
+import { currentPageUrl, recordVisit } from '@/lib/analytics';
 
 export default function Search() {
   const [searchParams] = useSearchParams();
@@ -27,6 +28,10 @@ export default function Search() {
       performSearch();
     }
   }, [query, currentLang]);
+
+  useEffect(() => {
+    void recordVisit({ page_url: currentPageUrl(), content_type: 'page' }, ['page', 'search', currentLang, query]);
+  }, [currentLang, query]);
 
   const performSearch = async () => {
     setLoading(true);

@@ -8,6 +8,8 @@ import { formatRelativeTime } from '@/lib/helpers';
 import { effectiveIsReel } from '@/lib/videoDisplay';
 import { ResponsiveVideoPlayer } from '@/components/VideoEmbed';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
+import { currentPageUrl, recordVisit } from '@/lib/analytics';
+import { VideoViewTracker } from '@/components/VideoViewTracker';
 
 export default function Videos() {
   const { t, i18n } = useTranslation();
@@ -27,6 +29,10 @@ export default function Videos() {
       fr: 'title_fr' as const,
     };
   }, []);
+
+  useEffect(() => {
+    void recordVisit({ page_url: currentPageUrl(), content_type: 'page' }, ['page', 'videos', currentLang]);
+  }, [currentLang]);
 
   useEffect(() => {
     const fetchVideos = async (opts?: { replace?: boolean; targetPage?: number }) => {
@@ -187,7 +193,8 @@ export default function Videos() {
               const title = video[titleKey] as string;
               const reel = effectiveIsReel(video);
               return (
-                <Card key={video.id} className="overflow-hidden flex flex-col">
+                <VideoViewTracker key={video.id} videoId={video.id}>
+                  <Card className="overflow-hidden flex flex-col h-full">
                   <CardContent className="p-0 flex flex-col flex-1">
                     <div className={reel ? 'px-4 pt-4 flex justify-center' : ''}>
                       <ResponsiveVideoPlayer
@@ -213,6 +220,7 @@ export default function Videos() {
                     </div>
                   </CardContent>
                 </Card>
+                </VideoViewTracker>
               );
             })}
             {hasMore ? <div ref={loadMoreRef} className="h-px w-full col-span-full" /> : null}

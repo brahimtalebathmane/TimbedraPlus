@@ -220,5 +220,25 @@
   "ticker_show_arrows": "إظهار الأسهم",
   "ticker_show_arrows_hint": "عرض أزرار يمين/يسار للتنقل اليدوي.",
   "ticker_speed": "سرعة الحركة",
-  "ticker_speed_hint": "عدد الثواني لإكمال دورة كاملة (قيمة أكبر = أبطأ)."
+  "ticker_speed_hint": "عدد الثواني لإكمال دورة كاملة (قيمة أكبر = أبطأ).",
+
+  "analytics_section_title": "الإحصائيات والتحليلات",
+  "analytics_filter_today": "اليوم",
+  "analytics_filter_7d": "آخر 7 أيام",
+  "analytics_filter_30d": "آخر 30 يومًا",
+  "analytics_unique_visitors": "زوار فريدون (تقدير)",
+  "analytics_total_page_views": "مشاهدات الصفحات",
+  "analytics_period_hint": "حسب الفترة المحددة",
+  "analytics_totals_hint": "إجمالي في الموقع",
+  "analytics_chart_visits_by_day": "الزيارات حسب اليوم",
+  "analytics_chart_views_mix": "توزيع الزيارات (مقالات / فيديو / أخرى)",
+  "analytics_visits": "زيارات",
+  "analytics_slice_article_pages": "مشاهدات مقالات",
+  "analytics_slice_video_plays": "مشاهدات فيديو",
+  "analytics_slice_other_visits": "صفحات أخرى",
+  "analytics_top_categories": "أكثر الأقسام زيارة",
+  "analytics_no_category_visits": "لا توجد زيارات مرتبطة بأقسام في هذه الفترة.",
+  "analytics_top_articles": "أكثر المقالات مشاهدة",
+  "analytics_top_videos": "أكثر الفيديوهات مشاهدة",
+  "analytics_no_visit_mix": "لا توجد بيانات كافية لهذا الرسم في الفترة المحددة."
 }

@@ -101,6 +101,7 @@ export type Post = {
   search_vector: string | null;
   created_at: string;
   updated_at: string;
+  views?: number;
   category?: Category;
   author?: Profile;
 };
@@ -115,6 +116,7 @@ export type Video = {
   is_reel?: boolean | null;
   video_width?: number | null;
   video_height?: number | null;
+  views?: number;
 };
 
 export type Message = {

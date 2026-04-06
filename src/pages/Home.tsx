@@ -22,6 +22,7 @@ import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
 import { cn } from '@/lib/utils';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { HomeShortsStrip } from '@/components/HomeShortsStrip';
+import { currentPageUrl, recordVisit } from '@/lib/analytics';
 
 type TopNewsPost = Pick<
   Post,
@@ -167,6 +168,10 @@ export default function Home() {
     fetchTopNews();
     fetchHomeVideos();
     fetchTiktokAndSections();
+  }, [currentLang]);
+
+  useEffect(() => {
+    void recordVisit({ page_url: currentPageUrl(), content_type: 'home' }, ['home', currentLang]);
   }, [currentLang]);
 
   useEffect(() => {

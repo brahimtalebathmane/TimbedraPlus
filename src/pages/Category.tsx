@@ -18,6 +18,7 @@ import { getPostThumbnailUrl, formatRelativeTime, truncateText } from '@/lib/hel
 import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
 import { cn } from '@/lib/utils';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
+import { currentPageUrl, recordVisit } from '@/lib/analytics';
 
 export default function Category() {
   const { t, i18n } = useTranslation();
@@ -61,6 +62,18 @@ export default function Category() {
   useEffect(() => {
     fetchCategory();
   }, [slug, currentLang]);
+
+  useEffect(() => {
+    if (!category?.id || !slug || category.slug !== slug) return;
+    void recordVisit(
+      {
+        page_url: currentPageUrl(),
+        content_type: 'page',
+        category_id: category.id,
+      },
+      ['category', category.id],
+    );
+  }, [category?.id, category?.slug, slug]);
 
   useSupabaseRealtime({
     tables: ['posts', 'categories'],

@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { getVideoEmbedUrl } from '@/lib/helpers';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
+import { useTranslation } from 'react-i18next';
+import { currentPageUrl, recordVisit } from '@/lib/analytics';
 
 type LiveStream = {
   id: string;
@@ -36,8 +38,13 @@ function Player({ stream }: { stream: LiveStream }) {
 }
 
 export default function Streams() {
+  const { i18n } = useTranslation();
   const [streams, setStreams] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    void recordVisit({ page_url: currentPageUrl(), content_type: 'page' }, ['page', 'streams', i18n.language]);
+  }, [i18n.language]);
 
   const fetchStreams = async () => {
     setLoading(true);

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { DashboardAnalyticsSection } from '@/pages/admin/DashboardAnalyticsSection';
 
 export default function Dashboard() {
   const { t, i18n } = useTranslation();
@@ -97,6 +98,8 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <DashboardAnalyticsSection />
     </div>
   );
 }

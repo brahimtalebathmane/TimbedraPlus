@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/lib/utils';
 import AdSlot from '@/components/Ads/AdSlot';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
+import { currentPageUrl, recordVisit } from '@/lib/analytics';
 
 export default function Article() {
   const { slug } = useParams<{ slug: string }>();
@@ -39,6 +40,19 @@ export default function Article() {
       fetchPost();
     }
   }, [slug, currentLang]);
+
+  useEffect(() => {
+    if (!post?.id || !slug || post.slug !== slug) return;
+    void recordVisit(
+      {
+        page_url: currentPageUrl(),
+        content_type: 'article',
+        category_id: post.category_id,
+        post_id: post.id,
+      },
+      ['article', post.id],
+    );
+  }, [post?.id, post?.slug, post?.category_id, slug]);
 
   useSupabaseRealtime({
     tables: ['posts'],
