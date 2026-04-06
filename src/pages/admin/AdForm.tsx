@@ -4,12 +4,17 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, AD_PLACEMENTS, type AdPlacement, type AdStatus } from '@/lib/supabase';
 import { canPlayVideoUrl } from '@/lib/videoDisplay';
-import { normalizeYouTubeUrl } from '@/lib/helpers';
-import { cn } from '@/lib/utils';
+import {
+  normalizeYouTubeUrl,
+  uploadAdImage,
+  removeStorageObjectByPublicUrl,
+  AD_IMAGES_BUCKET,
+} from '@/lib/helpers';
+import { cn, getErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -31,6 +36,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { VideoEmbed } from '@/components/VideoEmbed';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const placementEnum = z.enum(AD_PLACEMENTS as unknown as [string, ...string[]]);
 
@@ -44,20 +50,39 @@ function looksLikeUrl(url: string): boolean {
 }
 
 function createAdSchema(t: (key: string) => string) {
-  return z.object({
-    title: z.string().min(2),
-    media_url: z.string().min(2).refine((val) => looksLikeUrl(val), {
-      message: t('url_invalid'),
-    }),
-    link: z
-      .string()
-      .optional()
-      .refine((val) => val == null || val === '' || looksLikeUrl(val), {
-        message: t('url_invalid'),
-      }),
-    placement: placementEnum,
-    status: z.enum(['active', 'inactive']),
-  });
+  return z
+    .object({
+      title: z.string().min(2),
+      link: z
+        .string()
+        .optional()
+        .refine((val) => val == null || val === '' || looksLikeUrl(val), {
+          message: t('url_invalid'),
+        }),
+      placement: placementEnum,
+      status: z.enum(['active', 'inactive']),
+      media_type: z.enum(['image', 'video']),
+      video_url: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.media_type !== 'video') return;
+      const raw = data.video_url?.trim() ?? '';
+      if (raw.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t('ad_video_url_required'),
+          path: ['video_url'],
+        });
+        return;
+      }
+      if (!looksLikeUrl(raw)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t('url_invalid'),
+          path: ['video_url'],
+        });
+      }
+    });
 }
 
 type AdFormValues = z.infer<ReturnType<typeof createAdSchema>>;
@@ -76,6 +101,13 @@ export default function AdForm() {
   const isRTL = i18n.language === 'ar';
   const editing = !!id && id !== 'new';
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  /** Public URL for image ads (from Storage or loaded when editing). */
+  const [imagePublicUrl, setImagePublicUrl] = useState<string | null>(null);
+  /** Supabase Storage URLs to remove after a successful save (replaced uploads in this session). */
+  const [storageUrlsToDeleteAfterSave, setStorageUrlsToDeleteAfterSave] = useState<string[]>([]);
+  /** Media URL as loaded from DB (used to drop stored image when switching to video). */
+  const [initialMediaUrl, setInitialMediaUrl] = useState<string | null>(null);
 
   const adSchema = useMemo(() => createAdSchema(t), [t]);
 
@@ -83,12 +115,29 @@ export default function AdForm() {
     resolver: zodResolver(adSchema),
     defaultValues: {
       title: '',
-      media_url: '',
       link: '',
       placement: 'sidebar',
       status: 'inactive',
+      media_type: 'image',
+      video_url: '',
     },
   });
+
+  useEffect(() => {
+    if (id !== 'new' && id) return;
+    setInitialMediaUrl(null);
+    setImagePublicUrl(null);
+    setStorageUrlsToDeleteAfterSave([]);
+    form.reset({
+      title: '',
+      link: '',
+      placement: 'sidebar',
+      status: 'inactive',
+      media_type: 'image',
+      video_url: '',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   useEffect(() => {
     if (!id || id === 'new') return;
@@ -112,13 +161,20 @@ export default function AdForm() {
         const derivedPlacement: AdPlacement = (data.placement as AdPlacement) ?? 'sidebar';
         const derivedStatus: AdStatus = (data.status as AdStatus) ?? 'inactive';
 
+        const trimmed = derivedMedia.trim();
+        const isVideo = trimmed ? canPlayVideoUrl(normalizeYouTubeUrl(trimmed) ?? trimmed) : false;
+
         form.reset({
           title: data.title ?? '',
-          media_url: derivedMedia,
           link: data.link ?? '',
           placement: derivedPlacement,
           status: derivedStatus,
+          media_type: isVideo ? 'video' : 'image',
+          video_url: isVideo ? trimmed : '',
         });
+        setImagePublicUrl(!isVideo && trimmed ? trimmed : null);
+        setStorageUrlsToDeleteAfterSave([]);
+        setInitialMediaUrl(trimmed || null);
       } catch (err: unknown) {
         console.error(err);
         toast.error(t('error'));
@@ -132,41 +188,104 @@ export default function AdForm() {
   }, [id]);
 
   const watchedPlacement = form.watch('placement') as AdPlacement;
-  const watchedMediaUrl = form.watch('media_url');
+  const watchedMediaType = form.watch('media_type');
+  const watchedVideoUrl = form.watch('video_url');
   const watchedTitle = form.watch('title');
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error(t('ad_image_invalid_type'));
+      e.target.value = '';
+      return;
+    }
+
+    const previousUrl = imagePublicUrl;
+    setUploadingImage(true);
+    try {
+      const url = await uploadAdImage(file);
+      if (previousUrl && previousUrl.includes(`/storage/v1/object/public/${AD_IMAGES_BUCKET}/`)) {
+        setStorageUrlsToDeleteAfterSave((prev) =>
+          prev.includes(previousUrl) ? prev : [...prev, previousUrl]
+        );
+      }
+      setImagePublicUrl(url);
+      toast.success(t('success'));
+    } catch (err: unknown) {
+      console.error(err);
+      toast.error(getErrorMessage(err) || t('error'));
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
   const preview = useMemo(() => {
-    const raw = typeof watchedMediaUrl === 'string' ? watchedMediaUrl.trim() : '';
+    const title = watchedTitle?.trim() || t('advertisements');
+    if (watchedMediaType === 'image') {
+      const raw = typeof imagePublicUrl === 'string' ? imagePublicUrl.trim() : '';
+      if (!raw) return null;
+      return {
+        url: raw,
+        isVideo: false as const,
+        title,
+      };
+    }
+    const raw = typeof watchedVideoUrl === 'string' ? watchedVideoUrl.trim() : '';
     if (!raw) return null;
     const normalized = normalizeYouTubeUrl(raw) ?? raw;
     const isVideo = canPlayVideoUrl(normalized);
-
     return {
       url: normalized,
       isVideo,
-      title: watchedTitle?.trim() || t('advertisements'),
+      title,
     };
-  }, [t, watchedMediaUrl, watchedTitle]);
+  }, [t, watchedMediaType, watchedVideoUrl, imagePublicUrl, watchedTitle]);
 
   const onSubmit = async (values: AdFormValues) => {
+    if (values.media_type === 'image') {
+      const img = imagePublicUrl?.trim();
+      if (!img) {
+        toast.error(t('ad_image_required'));
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const rawMediaUrl = values.media_url.trim();
-      const normalizedMediaUrl = normalizeYouTubeUrl(rawMediaUrl) ?? rawMediaUrl;
+      let payload: Record<string, unknown>;
 
-      const isVideo = canPlayVideoUrl(normalizedMediaUrl);
-
-      const link = values.link && values.link.trim() !== '' ? values.link.trim() : null;
-
-      const payload = {
-        title: values.title.trim(),
-        media_url: normalizedMediaUrl,
-        image_url: isVideo ? null : normalizedMediaUrl,
-        video_url: isVideo ? normalizedMediaUrl : null,
-        link,
-        placement: values.placement,
-        status: values.status,
-      };
+      if (values.media_type === 'image') {
+        const imgUrl = imagePublicUrl!.trim();
+        payload = {
+          title: values.title.trim(),
+          media_url: imgUrl,
+          image_url: imgUrl,
+          video_url: null,
+          link: values.link && values.link.trim() !== '' ? values.link.trim() : null,
+          placement: values.placement,
+          status: values.status,
+        };
+      } else {
+        const rawMediaUrl = values.video_url!.trim();
+        const normalizedMediaUrl = normalizeYouTubeUrl(rawMediaUrl) ?? rawMediaUrl;
+        const isVideo = canPlayVideoUrl(normalizedMediaUrl);
+        if (!isVideo) {
+          toast.error(t('ad_video_url_invalid'));
+          setLoading(false);
+          return;
+        }
+        payload = {
+          title: values.title.trim(),
+          media_url: normalizedMediaUrl,
+          image_url: null,
+          video_url: normalizedMediaUrl,
+          link: values.link && values.link.trim() !== '' ? values.link.trim() : null,
+          placement: values.placement,
+          status: values.status,
+        };
+      }
 
       if (editing) {
         const { data, error } = await supabase
@@ -187,11 +306,24 @@ export default function AdForm() {
         if (!data) throw new Error('Ad insert returned no data');
       }
 
+      for (const u of new Set(storageUrlsToDeleteAfterSave)) {
+        void removeStorageObjectByPublicUrl(u, AD_IMAGES_BUCKET);
+      }
+      setStorageUrlsToDeleteAfterSave([]);
+
+      if (values.media_type === 'video' && editing && initialMediaUrl) {
+        const init = initialMediaUrl.trim();
+        const initNorm = normalizeYouTubeUrl(init) ?? init;
+        if (!canPlayVideoUrl(initNorm) && init.includes(`/storage/v1/object/public/${AD_IMAGES_BUCKET}/`)) {
+          void removeStorageObjectByPublicUrl(init, AD_IMAGES_BUCKET);
+        }
+      }
+
       toast.success(t('success'));
       navigate('/admin/ads');
     } catch (err: unknown) {
       console.error(err);
-      toast.error(t('error'));
+      toast.error(getErrorMessage(err) || t('error'));
     } finally {
       setLoading(false);
     }
@@ -303,20 +435,97 @@ export default function AdForm() {
               <CardContent className="space-y-5 pt-6">
                 <FormField
                   control={form.control}
-                  name="media_url"
+                  name="media_type"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('media_url')}</FormLabel>
+                    <FormItem className="space-y-3">
+                      <FormLabel>{t('ad_media_type')}</FormLabel>
                       <FormControl>
-                        <Input
-                          {...field}
-                          placeholder={t('media_url_placeholder')}
-                        />
+                        <RadioGroup
+                          onValueChange={(v) => {
+                            field.onChange(v);
+                            if (v === 'video') {
+                              setImagePublicUrl(null);
+                            } else {
+                              form.setValue('video_url', '');
+                            }
+                          }}
+                          value={field.value}
+                          className="flex flex-col gap-2"
+                        >
+                          <FormItem className="flex items-center space-x-3 space-y-0 rtl:space-x-reverse">
+                            <FormControl>
+                              <RadioGroupItem value="image" id="ad-media-image" />
+                            </FormControl>
+                            <FormLabel htmlFor="ad-media-image" className="font-normal cursor-pointer">
+                              {t('ad_media_image')}
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0 rtl:space-x-reverse">
+                            <FormControl>
+                              <RadioGroupItem value="video" id="ad-media-video" />
+                            </FormControl>
+                            <FormLabel htmlFor="ad-media-video" className="font-normal cursor-pointer">
+                              {t('ad_media_video')}
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                {watchedMediaType === 'image' ? (
+                  <div className="space-y-3">
+                    <FormLabel>{t('ad_image')}</FormLabel>
+                    <FormDescription>{t('ad_image_upload_hint')}</FormDescription>
+                    {imagePublicUrl && (
+                      <div className={cn('w-full overflow-hidden rounded-lg border bg-card', aspectClass, maxHeight)}>
+                        <img
+                          src={imagePublicUrl}
+                          alt={watchedTitle?.trim() || t('advertisements')}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        id="ad-image-upload"
+                        disabled={uploadingImage || loading}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById('ad-image-upload')?.click()}
+                        disabled={uploadingImage || loading}
+                      >
+                        <Upload className={cn('w-4 h-4', isRTL ? 'ml-2' : 'mr-2')} />
+                        {uploadingImage ? t('ad_uploading_image') : t('ad_upload_image')}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="video_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('ad_video_url')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder={t('ad_video_url_placeholder')}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}
@@ -332,7 +541,7 @@ export default function AdForm() {
                   )}
                 />
 
-                {preview && (
+                {preview && watchedMediaType === 'video' && (
                   <div>
                     <div className="text-sm text-muted-foreground mb-2">{t('preview')}</div>
                     <div className={cn('w-full overflow-hidden rounded-lg border bg-card', aspectClass, maxHeight)}>
@@ -359,7 +568,7 @@ export default function AdForm() {
           </div>
 
           <div className="flex gap-4">
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || uploadingImage}>
               {editing ? t('save') : t('add_advertisement')}
             </Button>
             <Button type="button" variant="outline" onClick={() => navigate('/admin/ads')}>
@@ -371,4 +580,3 @@ export default function AdForm() {
     </div>
   );
 }
-

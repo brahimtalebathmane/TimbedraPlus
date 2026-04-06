@@ -130,5 +130,19 @@
   "analytics_no_category_visits": "Aucune visite par catégorie sur cette période.",
   "analytics_top_articles": "Articles les plus vus",
   "analytics_top_videos": "Vidéos les plus vues",
-  "analytics_no_visit_mix": "Pas assez de données pour ce graphique sur la période."
+  "analytics_no_visit_mix": "Pas assez de données pour ce graphique sur la période.",
+
+  "ad_media_type": "Type de média",
+  "ad_media_image": "Image",
+  "ad_media_video": "Vidéo",
+  "ad_image": "Image de l’annonce",
+  "ad_image_upload_hint": "Téléversez une image depuis votre appareil (JPEG, PNG, WebP ou GIF). Elle est enregistrée dans le stockage et affichée automatiquement.",
+  "ad_upload_image": "Téléverser une image",
+  "ad_uploading_image": "Téléversement de l’image…",
+  "ad_image_required": "Veuillez téléverser une image pour l’annonce.",
+  "ad_image_invalid_type": "Veuillez choisir un fichier image valide.",
+  "ad_video_url": "URL de la vidéo",
+  "ad_video_url_placeholder": "Lien YouTube ou vidéo directe",
+  "ad_video_url_required": "Veuillez saisir l’URL de la vidéo.",
+  "ad_video_url_invalid": "URL vidéo non prise en charge. Utilisez YouTube ou une URL vidéo directe."
 }

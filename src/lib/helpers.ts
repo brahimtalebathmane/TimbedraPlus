@@ -45,7 +45,11 @@ export async function compressImage(file: File): Promise<File> {
   }
 }
 
-export async function uploadImage(file: File, bucket: string = 'news-images'): Promise<string> {
+export async function uploadImage(
+  file: File,
+  bucket: string = 'news-images',
+  pathPrefix: string = 'posts'
+): Promise<string> {
   const { supabase } = await import('./supabase');
 
   const compressedFile = await compressImage(file);
@@ -56,7 +60,7 @@ export async function uploadImage(file: File, bucket: string = 'news-images'): P
   const uuid = crypto.randomUUID();
   const fileExt = file.name.split('.').pop();
   const fileName = `${uuid}.${fileExt}`;
-  const filePath = `posts/${year}/${month}/${fileName}`;
+  const filePath = `${pathPrefix}/${year}/${month}/${fileName}`;
 
   const { error } = await supabase.storage
     .from(bucket)
@@ -66,6 +70,34 @@ export async function uploadImage(file: File, bucket: string = 'news-images'): P
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
   return data.publicUrl;
+}
+
+export const AD_IMAGES_BUCKET = 'ads-images';
+
+export async function uploadAdImage(file: File): Promise<string> {
+  return uploadImage(file, AD_IMAGES_BUCKET, 'ads');
+}
+
+/** Best-effort removal when replacing an asset; ignores non-project URLs. */
+export async function removeStorageObjectByPublicUrl(
+  publicUrl: string,
+  bucket: string
+): Promise<void> {
+  const { supabase } = await import('./supabase');
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  const idx = publicUrl.indexOf(marker);
+  if (idx === -1) return;
+  let path = publicUrl.slice(idx + marker.length);
+  const q = path.indexOf('?');
+  if (q !== -1) path = path.slice(0, q);
+  if (!path) return;
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    /* keep raw path */
+  }
+  const { error } = await supabase.storage.from(bucket).remove([path]);
+  if (error) console.warn('removeStorageObjectByPublicUrl:', error.message);
 }
 
 function getVideoMimeType(file: File): string {
