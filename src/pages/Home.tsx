@@ -21,6 +21,7 @@ import { formatRelativeTime, truncateText, getYouTubeThumbnailUrl, getPostThumbn
 import { effectiveIsReel, sortPostsReelsFirst } from '@/lib/videoDisplay';
 import { cn } from '@/lib/utils';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
+import { HomeShortsStrip } from '@/components/HomeShortsStrip';
 
 type TopNewsPost = Pick<
   Post,
@@ -152,6 +153,7 @@ export default function Home() {
   const [topNews, setTopNews] = useState<TopNewsPost[]>([]);
   const [latest, setLatest] = useState<Post[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [reelShorts, setReelShorts] = useState<Video[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -163,7 +165,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchTopNews();
-    fetchVideos();
+    fetchHomeVideos();
     fetchTiktokAndSections();
   }, [currentLang]);
 
@@ -246,15 +248,24 @@ export default function Home() {
     }
   };
 
-  const fetchVideos = async () => {
-    const { data } = await supabase
-      .from('videos')
-      .select('*')
-      .order('is_reel', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(3);
+  const fetchHomeVideos = async () => {
+    const [sidebarRes, reelsRes] = await Promise.all([
+      supabase
+        .from('videos')
+        .select('*')
+        .eq('is_reel', false)
+        .order('created_at', { ascending: false })
+        .limit(3),
+      supabase
+        .from('videos')
+        .select('*')
+        .eq('is_reel', true)
+        .order('created_at', { ascending: false })
+        .limit(24),
+    ]);
 
-    if (data) setVideos(data);
+    if (sidebarRes.data) setVideos(sidebarRes.data);
+    if (reelsRes.data) setReelShorts(reelsRes.data);
   };
 
   const fetchTiktokAndSections = async () => {
@@ -340,7 +351,7 @@ export default function Home() {
   const reloadAll = () => {
     setPage(1);
     fetchTopNews();
-    fetchVideos();
+    fetchHomeVideos();
     fetchTiktokAndSections();
     fetchLatest({ page: 1, replace: true });
   };
@@ -532,6 +543,8 @@ export default function Home() {
               </div>
             </section>
           )}
+
+          <HomeShortsStrip videos={reelShorts} currentLang={currentLang} isRTL={isRTL} />
 
           <div className="lg:grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
