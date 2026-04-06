@@ -78,10 +78,33 @@ const SECTION_DEFS: SectionDef[] = [
   { key: 'infographics', keywordsAr: ['انفوج', 'انفو', 'انفوجرافيك', 'انفوغرافيك'], keywordsFr: ['Infographique', 'Infographic', 'Infographies'] },
 ];
 
+/** Stable key so two DB categories with the same display name cannot map to two homepage slots. */
+function categoryDisplayDedupeKey(cat: Category): string {
+  const ar = (cat.name_ar ?? '').trim().toLowerCase();
+  const fr = (cat.name_fr ?? '').trim().toLowerCase();
+  if (ar) return `ar:${ar}`;
+  if (fr) return `fr:${fr}`;
+  return `id:${cat.id}`;
+}
+
 /** Higher score = better match; used for homepage section ↔ category pairing. */
 function scoreSectionCategory(def: SectionDef, cat: Category): number {
   const arName = (cat.name_ar ?? '').toLowerCase();
   const frName = (cat.name_fr ?? '').toLowerCase();
+
+  // Combined "reports + analysis" names belong to the reports slot only (see SECTION_CATEGORY_ASSIGN_ORDER).
+  if (def.key === 'opinion') {
+    if (arName.includes('تقارير') && (arName.includes('تحليل') || arName.includes('تحليلات'))) {
+      return 0;
+    }
+    if (
+      (frName.includes('rapport') || frName.includes('rapports')) &&
+      (frName.includes('analyse') || frName.includes('analyses') || frName.includes('analys'))
+    ) {
+      return 0;
+    }
+  }
+
   let score = 0;
   for (const kw of def.keywordsAr) {
     const k = kw.toLowerCase();
@@ -253,6 +276,7 @@ export default function Home() {
 
       const pickedCats: Partial<Record<HomeSectionKey, Category | null>> = {};
       const usedCategoryIds = new Set<string>();
+      const usedDisplayKeys = new Set<string>();
 
       for (const key of SECTION_CATEGORY_ASSIGN_ORDER) {
         const def = SECTION_DEFS.find((d) => d.key === key);
@@ -261,13 +285,18 @@ export default function Home() {
         let best: { cat: Category; score: number } | null = null;
         for (const cat of categories) {
           if (usedCategoryIds.has(cat.id)) continue;
+          const displayKey = categoryDisplayDedupeKey(cat);
+          if (usedDisplayKeys.has(displayKey)) continue;
           const score = scoreSectionCategory(def, cat);
           if (score <= 0) continue;
           if (!best || score > best.score) best = { cat, score };
         }
 
         pickedCats[key] = best?.cat ?? null;
-        if (best) usedCategoryIds.add(best.cat.id);
+        if (best) {
+          usedCategoryIds.add(best.cat.id);
+          usedDisplayKeys.add(categoryDisplayDedupeKey(best.cat));
+        }
       }
 
       const postsPromises: Array<PromiseLike<[HomeSectionKey, Post[]]>> = [];
@@ -499,31 +528,6 @@ export default function Home() {
                         </button>
                       ))}
                   </div>
-                </div>
-              </div>
-
-              <div className="mt-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-2xl font-bold">{t('more_news')}</h3>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {latest.slice(0, 8).map((post) => (
-                    <Link
-                      key={post.id}
-                      to={`/${currentLang}/${post.slug}`}
-                      className={`flex items-start gap-3 hover:text-primary transition-colors ${
-                        isRTL ? 'flex-row-reverse' : 'flex-row'
-                      }`}
-                    >
-                      <span className="text-primary font-bold pt-1">{'•'}</span>
-                      <div className="min-w-0">
-                        <div className="font-bold text-sm line-clamp-2">
-                          {post[`title_${currentLang}` as keyof Post] as string}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
                 </div>
               </div>
             </section>
