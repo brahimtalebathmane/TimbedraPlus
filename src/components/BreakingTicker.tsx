@@ -181,7 +181,10 @@ export default function BreakingTicker({
 
   return (
     <div
-      className={cn('sticky top-0 z-[60] w-full bg-primary text-primary-foreground', className)}
+      className={cn(
+        'sticky top-0 z-[60] w-full bg-red-600 text-white shadow-sm',
+        className
+      )}
       style={{
         height: `${heightPx}px`,
       }}

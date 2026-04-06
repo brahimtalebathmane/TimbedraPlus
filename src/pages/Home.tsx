@@ -78,6 +78,37 @@ const SECTION_DEFS: SectionDef[] = [
   { key: 'infographics', keywordsAr: ['انفوج', 'انفو', 'انفوجرافيك', 'انفوغرافيك'], keywordsFr: ['Infographique', 'Infographic', 'Infographies'] },
 ];
 
+/** Higher score = better match; used for homepage section ↔ category pairing. */
+function scoreSectionCategory(def: SectionDef, cat: Category): number {
+  const arName = (cat.name_ar ?? '').toLowerCase();
+  const frName = (cat.name_fr ?? '').toLowerCase();
+  let score = 0;
+  for (const kw of def.keywordsAr) {
+    const k = kw.toLowerCase();
+    if (k && arName.includes(k)) score += 5;
+  }
+  for (const kw of def.keywordsFr) {
+    const k = kw.toLowerCase();
+    if (k && frName.includes(k)) score += 3;
+  }
+  return score;
+}
+
+/**
+ * Order for assigning each DB category to at most one homepage section.
+ * "reports" before "opinion" so combined names like "تقارير وتحليلات" map to reports, not opinion (تحليل).
+ */
+const SECTION_CATEGORY_ASSIGN_ORDER: HomeSectionKey[] = [
+  'reports',
+  'opinion',
+  'economy',
+  'sports',
+  'health',
+  'culture',
+  'various',
+  'infographics',
+];
+
 function getPostThumbUrl(input: {
   content_type?: string | null;
   image_url?: string | null;
@@ -97,7 +128,6 @@ export default function Home() {
   const currentLang = i18n.language;
   const [topNews, setTopNews] = useState<TopNewsPost[]>([]);
   const [latest, setLatest] = useState<Post[]>([]);
-  const [trending, setTrending] = useState<Post[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -110,7 +140,6 @@ export default function Home() {
 
   useEffect(() => {
     fetchTopNews();
-    fetchTrending();
     fetchVideos();
     fetchTiktokAndSections();
   }, [currentLang]);
@@ -194,19 +223,6 @@ export default function Home() {
     }
   };
 
-  const fetchTrending = async () => {
-    const { data } = await supabase
-      .from('posts')
-      .select('*, category:categories(*)')
-      .eq('status', 'published')
-      .in('content_type', [...LEGACY_IMAGE_CONTENT_TYPES, ...IMAGE_CONTENT_TYPES, VIDEO_CONTENT_TYPE, LEGACY_VIDEO_CONTENT_TYPE] as string[])
-      .order('is_reel', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (data) setTrending(sortPostsReelsFirst(data));
-  };
-
   const fetchVideos = async () => {
     const { data } = await supabase
       .from('videos')
@@ -235,30 +251,24 @@ export default function Home() {
       setTiktokUrl(contactRow?.tiktok ?? null);
       setYoutubeUrl(contactRow?.youtube ?? null);
 
-      const findBestCategory = (def: SectionDef): Category | null => {
+      const pickedCats: Partial<Record<HomeSectionKey, Category | null>> = {};
+      const usedCategoryIds = new Set<string>();
+
+      for (const key of SECTION_CATEGORY_ASSIGN_ORDER) {
+        const def = SECTION_DEFS.find((d) => d.key === key);
+        if (!def) continue;
+
         let best: { cat: Category; score: number } | null = null;
         for (const cat of categories) {
-          const arName = (cat.name_ar ?? '').toLowerCase();
-          const frName = (cat.name_fr ?? '').toLowerCase();
-
-          let score = 0;
-          for (const kw of def.keywordsAr) {
-            const k = kw.toLowerCase();
-            if (k && arName.includes(k)) score += 5;
-          }
-          for (const kw of def.keywordsFr) {
-            const k = kw.toLowerCase();
-            if (k && frName.includes(k)) score += 3;
-          }
-
+          if (usedCategoryIds.has(cat.id)) continue;
+          const score = scoreSectionCategory(def, cat);
+          if (score <= 0) continue;
           if (!best || score > best.score) best = { cat, score };
         }
-        if (!best || best.score === 0) return null;
-        return best.cat;
-      };
 
-      const pickedCats: Partial<Record<HomeSectionKey, Category | null>> = {};
-      for (const def of SECTION_DEFS) pickedCats[def.key] = findBestCategory(def);
+        pickedCats[key] = best?.cat ?? null;
+        if (best) usedCategoryIds.add(best.cat.id);
+      }
 
       const postsPromises: Array<PromiseLike<[HomeSectionKey, Post[]]>> = [];
       for (const def of SECTION_DEFS) {
@@ -301,7 +311,6 @@ export default function Home() {
   const reloadAll = () => {
     setPage(1);
     fetchTopNews();
-    fetchTrending();
     fetchVideos();
     fetchTiktokAndSections();
     fetchLatest({ page: 1, replace: true });
@@ -319,10 +328,8 @@ export default function Home() {
   return (() => {
     const isRTL = currentLang === 'ar';
 
-    const reportsCat = sectionCategories.reports;
     const infographicsCat = sectionCategories.infographics;
 
-    const sidebarReportPosts = (sectionPosts.reports ?? trending).slice(0, 6);
     const sidebarInfographics = (sectionPosts.infographics ?? []).slice(0, 4);
 
     return (
@@ -641,75 +648,6 @@ export default function Home() {
                   </div>
                 </section>
               )}
-
-              <section>
-                <div className="flex items-center justify-between mb-4">
-                    <h2
-                      className={`text-2xl font-bold flex items-center gap-2 ${
-                        isRTL ? 'flex-row-reverse' : 'flex-row'
-                      }`}
-                    >
-                      {reportsCat ? <CategoryIcon category={reportsCat} boxSize={20} iconSize={12} /> : null}
-                      {reportsCat ? (reportsCat[`name_${currentLang}` as keyof Category] as string) : t('latest_reports')}
-                    </h2>
-                  {reportsCat ? (
-                    <Link to={`/${currentLang}/category/${reportsCat.slug}`} className="text-primary hover:underline text-sm">
-                      {t('more')}
-                    </Link>
-                  ) : null}
-                </div>
-
-                <div className="space-y-4">
-                  {sidebarReportPosts.length > 0 ? (
-                    sidebarReportPosts.slice(0, 5).map((post) => (
-                      <Link key={post.id} to={`/${currentLang}/${post.slug}`}>
-                        <div
-                          className={`flex gap-3 ${
-                            isRTL ? 'flex-row-reverse' : 'flex-row'
-                          } items-start hover:bg-muted/30 rounded-lg p-2 transition-colors`}
-                        >
-                          <div
-                            className={cn(
-                              'relative rounded-md overflow-hidden flex-shrink-0',
-                              effectiveIsReel(post) ? 'w-12 h-[4.75rem]' : 'w-20 h-14'
-                            )}
-                          >
-                            {(() => {
-                              const url = getPostThumbUrl({
-                                content_type: post.content_type,
-                                image_url: post.image_url,
-                                video_url: post.video_url,
-                                video_thumbnail: post.video_thumbnail,
-                              });
-                              if (!url) return null;
-
-                              return (
-                                <img
-                                  src={url}
-                                  alt={post[`title_${currentLang}` as keyof Post] as string}
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                />
-                              );
-                            })()}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="font-bold text-sm line-clamp-2">
-                              {post[`title_${currentLang}` as keyof Post] as string}
-                            </div>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                              <Clock className="w-3 h-3" />
-                              {formatRelativeTime(post.created_at, currentLang)}
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    ))
-                  ) : (
-                    <div className="text-sm text-muted-foreground">{t('no_results')}</div>
-                  )}
-                </div>
-              </section>
 
               <section>
                 <div className="flex items-center justify-between mb-4">
