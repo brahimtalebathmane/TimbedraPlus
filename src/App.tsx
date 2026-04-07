@@ -30,6 +30,7 @@ const MediaLibrary = lazy(() => import('./pages/admin/MediaLibrary'));
 const AdsAdmin = lazy(() => import('./pages/admin/Ads'));
 const AdForm = lazy(() => import('./pages/admin/AdForm'));
 const TickerSettingsAdmin = lazy(() => import('./pages/admin/TickerSettings'));
+const AnalyticsAdmin = lazy(() => import('./pages/admin/Analytics'));
 
 function LoadingFallback() {
   return (
@@ -161,6 +162,7 @@ function App() {
             }
           >
             <Route index element={<Dashboard />} />
+            <Route path="analytics" element={<AnalyticsAdmin />} />
             <Route path="posts" element={<Posts />} />
             <Route path="posts/:id" element={<PostForm />} />
             <Route path="categories" element={<Categories />} />

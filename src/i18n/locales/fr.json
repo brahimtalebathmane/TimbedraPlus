@@ -93,6 +93,8 @@
   "follow_us": "Suivez-nous",
   "follow_now": "Suivre maintenant",
   "footer_rights": "Tous droits réservés à l’agence médiatique Timbedgha",
+  "footer_logo_description": "Timbedgha Plus",
+  "footer_bottom_rights": "Timbedgha Plus 2026 Tous droits réservés",
 
   "ticker_settings": "Bandeau d’alerte",
   "ticker_settings_subtitle": "Contrôlez le bandeau d’actualités défilantes en haut du site.",
@@ -113,6 +115,7 @@
   "ticker_speed_hint": "Secondes par boucle complète (plus grand = plus lent).",
 
   "analytics_section_title": "Statistiques",
+  "analytics_menu": "Statistiques",
   "analytics_filter_today": "Aujourd'hui",
   "analytics_filter_7d": "7 derniers jours",
   "analytics_filter_30d": "30 derniers jours",

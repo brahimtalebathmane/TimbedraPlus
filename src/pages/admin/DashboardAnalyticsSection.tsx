@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import { endOfDay, format, startOfDay, subDays } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { BarChart3, Eye, FileText, MessageSquare, Users, Video } from 'lucide-react';
+import { BarChart3, Eye, FileText, FolderOpen, MessageSquare, Users, Video } from 'lucide-react';
 import { supabase, Category } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,7 @@ export function DashboardAnalyticsSection() {
   const [totals, setTotals] = useState({
     articles: 0,
     videos: 0,
+    categories: 0,
     users: 0,
     comments: 0,
   });
@@ -99,6 +100,7 @@ export function DashboardAnalyticsSection() {
         visitsData,
         postsCount,
         videosCount,
+        categoriesCount,
         profilesCount,
         commentsCount,
         topPostsRes,
@@ -108,6 +110,7 @@ export function DashboardAnalyticsSection() {
         fetchVisitsInRange(startIso, endIso),
         supabase.from('posts').select('id', { count: 'exact', head: true }),
         supabase.from('videos').select('id', { count: 'exact', head: true }),
+        supabase.from('categories').select('id', { count: 'exact', head: true }),
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('comments').select('id', { count: 'exact', head: true }),
         supabase
@@ -127,6 +130,7 @@ export function DashboardAnalyticsSection() {
       setTotals({
         articles: postsCount.count ?? 0,
         videos: videosCount.count ?? 0,
+        categories: categoriesCount.count ?? 0,
         users: profilesCount.count ?? 0,
         comments: commentsCount.count ?? 0,
       });
@@ -251,6 +255,12 @@ export function DashboardAnalyticsSection() {
       title: t('videos'),
       value: totals.videos,
       icon: Video,
+      hint: t('analytics_totals_hint'),
+    },
+    {
+      title: t('categories'),
+      value: totals.categories,
+      icon: FolderOpen,
       hint: t('analytics_totals_hint'),
     },
     {
