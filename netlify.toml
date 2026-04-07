@@ -2,3 +2,7 @@
   command = "npm ci && npm run build"
   publish = "dist"
 
+[[edge_functions]]
+  function = "seo"
+  path = "/*"
+
