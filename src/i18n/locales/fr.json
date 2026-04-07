@@ -136,6 +136,7 @@
   "analytics_no_visit_mix": "Pas assez de données pour ce graphique sur la période.",
 
   "ad_media_type": "Type de média",
+  "ad_media_type_required": "Veuillez choisir un type de média (image ou vidéo).",
   "ad_media_image": "Image",
   "ad_media_video": "Vidéo",
   "ad_image": "Image de l’annonce",

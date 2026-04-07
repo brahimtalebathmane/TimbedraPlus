@@ -67,10 +67,19 @@ export default function AdSlot({
   });
 
   const mediaUrl = useMemo(() => {
-    return ad?.media_url ?? ad?.video_url ?? ad?.image_url ?? null;
+    const explicitVideoUrl = ad?.video_url?.trim() || null;
+    const explicitImageUrl = ad?.image_url?.trim() || null;
+    const legacyMediaUrl = ad?.media_url?.trim() || null;
+    return explicitVideoUrl ?? explicitImageUrl ?? legacyMediaUrl ?? null;
   }, [ad]);
 
-  const isVideo = mediaUrl ? canPlayVideoUrl(mediaUrl) : false;
+  // Prefer stored columns; only fall back to heuristics for legacy `media_url`.
+  const isVideo = useMemo(() => {
+    if (!ad || !mediaUrl) return false;
+    if (ad.video_url && ad.video_url.trim().length > 0) return true;
+    if (ad.image_url && ad.image_url.trim().length > 0) return false;
+    return canPlayVideoUrl(mediaUrl);
+  }, [ad, mediaUrl]);
 
   const aspectClass = PLACEMENT_ASPECT[placement] ?? 'aspect-[16/9]';
   const maxHeight =

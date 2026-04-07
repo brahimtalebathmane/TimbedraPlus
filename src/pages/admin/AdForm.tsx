@@ -61,7 +61,9 @@ function createAdSchema(t: (key: string) => string) {
         }),
       placement: placementEnum,
       status: z.enum(['active', 'inactive']),
-      media_type: z.enum(['image', 'video']),
+      media_type: z.enum(['image', 'video'], {
+        required_error: t('ad_media_type_required'),
+      }),
       video_url: z.string().optional(),
     })
     .superRefine((data, ctx) => {
@@ -118,7 +120,7 @@ export default function AdForm() {
       link: '',
       placement: 'sidebar',
       status: 'inactive',
-      media_type: 'image',
+      media_type: undefined as unknown as 'image' | 'video',
       video_url: '',
     },
   });
@@ -133,7 +135,7 @@ export default function AdForm() {
       link: '',
       placement: 'sidebar',
       status: 'inactive',
-      media_type: 'image',
+      media_type: undefined as unknown as 'image' | 'video',
       video_url: '',
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -162,7 +164,7 @@ export default function AdForm() {
         const derivedStatus: AdStatus = (data.status as AdStatus) ?? 'inactive';
 
         const trimmed = derivedMedia.trim();
-        const isVideo = trimmed ? canPlayVideoUrl(normalizeYouTubeUrl(trimmed) ?? trimmed) : false;
+        const isVideo = typeof data.video_url === 'string' && data.video_url.trim().length > 0;
 
         form.reset({
           title: data.title ?? '',
@@ -170,9 +172,9 @@ export default function AdForm() {
           placement: derivedPlacement,
           status: derivedStatus,
           media_type: isVideo ? 'video' : 'image',
-          video_url: isVideo ? trimmed : '',
+          video_url: isVideo ? data.video_url?.trim() ?? '' : '',
         });
-        setImagePublicUrl(!isVideo && trimmed ? trimmed : null);
+        setImagePublicUrl(!isVideo ? (data.image_url?.trim() || trimmed || null) : null);
         setStorageUrlsToDeleteAfterSave([]);
         setInitialMediaUrl(trimmed || null);
       } catch (err: unknown) {
@@ -232,6 +234,7 @@ export default function AdForm() {
         title,
       };
     }
+    if (watchedMediaType !== 'video') return null;
     const raw = typeof watchedVideoUrl === 'string' ? watchedVideoUrl.trim() : '';
     if (!raw) return null;
     const normalized = normalizeYouTubeUrl(raw) ?? raw;
@@ -244,6 +247,10 @@ export default function AdForm() {
   }, [t, watchedMediaType, watchedVideoUrl, imagePublicUrl, watchedTitle]);
 
   const onSubmit = async (values: AdFormValues) => {
+    if (!values.media_type) {
+      toast.error(t('ad_media_type_required'));
+      return;
+    }
     if (values.media_type === 'image') {
       const img = imagePublicUrl?.trim();
       if (!img) {
@@ -508,7 +515,7 @@ export default function AdForm() {
                       </Button>
                     </div>
                   </div>
-                ) : (
+                ) : watchedMediaType === 'video' ? (
                   <FormField
                     control={form.control}
                     name="video_url"
@@ -525,6 +532,8 @@ export default function AdForm() {
                       </FormItem>
                     )}
                   />
+                ) : (
+                  <div className="text-sm text-muted-foreground">{t('ad_media_type_required')}</div>
                 )}
 
                 <FormField

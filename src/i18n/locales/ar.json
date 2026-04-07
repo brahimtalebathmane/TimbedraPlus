@@ -127,6 +127,7 @@
   "media_url": "رابط الوسائط",
   "media_url_placeholder": "ضع رابط الصورة أو الفيديو (YouTube أو رابط مباشر)",
   "ad_media_type": "نوع الوسيط",
+  "ad_media_type_required": "يرجى اختيار نوع الوسيط (صورة أو فيديو).",
   "ad_media_image": "صورة",
   "ad_media_video": "فيديو",
   "ad_image": "صورة الإعلان",

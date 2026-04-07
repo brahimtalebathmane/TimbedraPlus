@@ -111,9 +111,15 @@ export default function AdsAdmin() {
   };
 
   const mediaPreview = (ad: Ad) => {
-    const url = ad.media_url ?? ad.video_url ?? ad.image_url ?? null;
+    const explicitVideoUrl = ad.video_url?.trim() || null;
+    const explicitImageUrl = ad.image_url?.trim() || null;
+    const legacyMediaUrl = ad.media_url?.trim() || null;
+    const url = explicitVideoUrl ?? explicitImageUrl ?? legacyMediaUrl ?? null;
     if (!url) return '—';
-    if (canPlayVideoUrl(url)) {
+
+    // Prefer stored columns. Only fall back to URL heuristics for legacy `media_url`.
+    const isVideo = explicitVideoUrl ? true : legacyMediaUrl ? canPlayVideoUrl(url) : false;
+    if (isVideo) {
       return (
         <div className="w-24 h-14 bg-black rounded object-cover flex items-center justify-center text-white/70 text-xs">
           {t('video')}
