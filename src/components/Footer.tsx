@@ -104,7 +104,7 @@ export default function Footer() {
                 className="h-10 w-auto"
               />
             </Link>
-            <div className="text-sm text-muted-foreground">{t('footer_rights')}</div>
+            <div className="text-sm text-muted-foreground">{t('footer_logo_description')}</div>
           </div>
 
           <div className="space-y-3">
@@ -270,7 +270,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>{t('footer_rights')}</span>
+          <span>{t('footer_bottom_rights')}</span>
           <div className="flex flex-wrap items-center gap-4">
             <Link to={`/${currentLang}`} className="hover:text-foreground transition-colors">
               {t('home')}
